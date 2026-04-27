@@ -1,0 +1,24 @@
+{
+  "name": "dutch-auction-hook-bot",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "dev": "ts-node --project src/tsconfig.bot.json src/index.ts",
+    "task": "ts-node --project src/tsconfig.bot.json src/task.ts",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@zama-fhe/relayer-sdk": "0.4.2",
+    "dotenv": "^17.4.2",
+    "ts-node": "^10.9.2",
+    "typescript": "^6.0.3",
+    "viem": "^2.48.3"
+  },
+  "devDependencies": {
+    "@types/node": "^20.19.39"
+  }
+}
