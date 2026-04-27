@@ -72,10 +72,10 @@ contract EmelBid is
 
     /// @dev One entry per pending decryption — bot reads requestId from event
     struct DecryptionRequest {
-        ebool   isWinning;  // encrypted comparison result — bot decrypts this
+        ebool isWinning;  // encrypted comparison result — bot decrypts this
         address bidder;
         euint64 bidAmount;  // encrypted cWETH bid — held until fulfillDecryption()
-        PoolId  poolId;
+        PoolId poolId;
     }
 
    
@@ -399,9 +399,9 @@ contract EmelBid is
         DecryptionRequest storage req = decryptionRequests[_requestId];
         if (req.bidder == address(0)) revert RequestNotFound();
 
-        address bidder    = req.bidder;
+        address bidder = req.bidder;
         euint64 bidAmount = req.bidAmount;
-        PoolId  poolId    = req.poolId;
+        PoolId poolId = req.poolId;
 
         // Delete before acting — prevents re-entrancy on same requestId
         delete decryptionRequests[_requestId];
@@ -411,7 +411,7 @@ contract EmelBid is
         AuctionConfig storage auction = auctions[poolId];
 
         if (_isWinning && !auction.settled) {
-            // ── WINNER ────────────────────────────────────────────────────────
+            // WINNER
             auction.settled  = true;
             auction.proceeds = bidAmount;   // encrypted cWETH for seller
             FHE.allowThis(auction.proceeds);
@@ -424,9 +424,9 @@ contract EmelBid is
             emit AuctionSettled(poolId, bidder);
 
         } else {
-            // ── LOSER — refund encrypted cWETH ────────────────────────────────
+            // LOSER — refund encrypted cWETH
             FHE.allow(bidAmount, bidder);
-            CWETH.transfer(bidder, bidAmount);
+            CWETH.ConfidentialTransfer(bidder, bidAmount);
 
             emit BidRefunded(poolId, bidder);
         }
@@ -455,9 +455,6 @@ contract EmelBid is
         emit ProceedsClaimed(poolId, msg.sender);
     }
 
-    // =========================================================================
-    //                           EXPIRE AUCTION
-    // =========================================================================
 
     /**
      * @notice Anyone can call after duration passes with no winner.
@@ -523,7 +520,7 @@ contract EmelBid is
             );
         } else {
             // Confidential ERC-20 (ERC-7984, euint64)
-            IConfidentialERC20(auction.asset).transfer(
+            IConfidentialERC20(auction.asset).ConfidentialTransfer(
                 recipient,
                 FHE.asEuint64(uint64(auction.tokenIdOrAmount))
             );
@@ -553,15 +550,12 @@ contract EmelBid is
         }
     }
 
-    // =========================================================================
-    //                        CREATE2 — AuctionSlot
-    // =========================================================================
 
     function _deployAuctionSlot(
         address seller,
         uint256 nonce
     ) internal returns (address deployed) {
-        bytes32 salt    = keccak256(abi.encodePacked(seller, nonce));
+        bytes32 salt = keccak256(abi.encodePacked(seller, nonce));
         bytes memory bc = type(AuctionSlot).creationCode;
 
         assembly {
@@ -585,9 +579,7 @@ contract EmelBid is
         )))));
     }
 
-    // =========================================================================
-    //                             VIEW FUNCTIONS
-    // =========================================================================
+
 
     function getAuction(PoolId poolId) external view returns (AuctionConfig memory) {
         return auctions[poolId];
@@ -637,8 +629,6 @@ contract EmelBid is
         if (block.number >= endBlock) return 0;
         return endBlock - block.number;
     }
-
-    // function to view proceed, decrypt in the frontend
 
     // Only owner can update the cWETH contract address if needed
     function setCWETH(address _cweth) external onlyOwner {
