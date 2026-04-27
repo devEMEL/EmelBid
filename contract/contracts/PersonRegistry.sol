@@ -78,3 +78,30 @@ contract PersonRegistry is ZamaEthereumConfig {
     }  
     
 }
+
+
+
+
+// function confidentialTransfer(
+//     address to,
+//     externalEuint64 encryptedAmount,
+//     bytes calldata inputProof
+// ) external returns (euint64);
+
+// function confidentialTransfer(
+//     address to,
+//     euint64 amount
+// ) external returns (euint64);
+
+// function confidentialTransferFrom(
+//     address from,
+//     address to,
+//     externalEuint64 encryptedAmount,
+//     bytes calldata inputProof
+// ) external returns (euint64);
+
+// function confidentialTransferFrom(
+//     address from,
+//     address to,
+//     euint64 amount
+// ) external returns (euint64);

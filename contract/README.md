@@ -1,3 +1,79 @@
+/**
+ * @title  EmelBid — Encrypted Dutch Auction Hook
+ * @notice Uniswap V4 hook that runs confidential Dutch auctions.
+ *
+ *  Supported asset types:
+ *    • ERC-721              — single NFT, one winner takes it
+ *    • ERC-20               — fungible token lot, one winner takes all
+ *    • Confidential ERC-20  — encrypted token (ERC-7984), one winner takes all
+ *
+ *  Payment currency: cWETH (Confidential WETH, ERC7984, euint64).
+ *    Bidder deposits ETH into cWETH contract to receive encrypted cWETH,
+ *    then sets hook as operator before calling swap().
+ *
+ *  Decryption pattern (mirrors PersonRegistry):
+ *    • beforeSwap emits DecryptionRequested(requestId, isWinning)
+ *    • Off-chain bot listens, decrypts ebool, calls fulfillDecryption()
+ *    • fulfillDecryption() settles winner or refunds loser
+ *
+ *  Full bid flow:
+ *    1. Seller calls createAuction() — asset pulled into hook, AuctionSlot
+ *       deployed via CREATE2, pool initialised, config stored in afterInitialize.
+ *    2. Bidder deposits ETH → cWETH, sets hook as operator, calls swap() with
+ *       amountSpecified = 0. hookData carries (encBid, proof).
+ *       beforeSwap pulls cWETH, runs FHE comparison, emits DecryptionRequested.
+ *    3. Bot detects event, decrypts isWinning, calls fulfillDecryption() —
+ *       winner gets asset + cWETH stored for seller, loser gets cWETH refunded.
+ */
+
+
+ /**
+   * @notice Intercepts every swap on an auction pool — the swap IS the bid.
+   *
+   *  Bidder must:
+   *    1. Deposit ETH into cWETH contract to receive encrypted cWETH
+   *    2. Call setOperator(hookAddress) on cWETH contract
+   *    3. Call swap() with amountSpecified = 0
+   *       hookData = abi.encode(encBid, proof)
+   *
+   *  Hook pulls cWETH from bidder via operator, runs FHE comparison,
+   *  emits DecryptionRequested for the bot to pick up.
+   */
+
+/**
+* @notice Create a new encrypted Dutch auction.
+*
+* @dev  Encrypted params (encStartPrice, encDecayRate, encReserve) must be
+*       in cWETH token units (6 decimals, not wei).
+*       e.g. 1 ETH = 1_000_000 cWETH units (since RATE = 1e12, decimals = 6)
+*
+* @param publicStartPrice   Plaintext anchor in cWETH units shown to bidders
+* @param encStartPrice      Encrypted real starting price (euint64, cWETH units)
+* @param encDecayRate       Encrypted decay per block (euint64, cWETH units)
+* @param encReserve         Encrypted reserve floor (euint64, cWETH units)
+* @param inputProof         ZK proof covering all three encrypted inputs
+* @param duration           Auction length in blocks
+* @param assetType          ERC20 | ERC721 | CONFIDENTIAL
+* @param asset              Contract address of the asset being auctioned
+* @param tokenIdOrAmount    tokenId (ERC721) or amount (ERC20/CONFIDENTIAL)
+*/
+
+
+
+   /**
+   * @notice Called by off-chain bot after decrypting isWinning.
+   *
+   *  Winner:
+   *    → auction.settled = true
+   *    → auctionWinner recorded
+   *    → auctioned asset transferred to winner
+   *    → encrypted cWETH stored as proceeds for seller
+   *
+   *  Loser (or race where auction already settled):
+   *    → encrypted cWETH refunded to bidder
+   */
+
+
 # VeilBook
 
 **Confidential Limit Order Book on Uniswap V4**  
