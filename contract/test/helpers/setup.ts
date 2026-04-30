@@ -24,9 +24,9 @@ export async function deployFixture() {
 
   // ── EmelBid ─────────────────────────────────────────
   const EmelBidFactory = await ethers.getContractFactory("EmelBid", deployer);
-  const hook = await EmelBidFactory.deploy(cwethAddress, decryptorAddress) as unknown as EmelBid;
-  await hook.waitForDeployment();
-  const hookAddress = await hook.getAddress();
+  const emelBid = await EmelBidFactory.deploy(cwethAddress, decryptorAddress) as unknown as EmelBid;
+  await emelBid.waitForDeployment();
+  const emelBidAddress = await emelBid.getAddress();
 
   // ── MockERC20 ───────────────────────────────────────
   const MockERC20Factory = await ethers.getContractFactory("MockERC20", deployer);
@@ -47,16 +47,16 @@ export async function deployFixture() {
   const mockERC7984Address = await mockERC7984.getAddress();
 
   /**
-   * Helper — deposit ETH into cWETH for a bidder and set hook as operator
+   * Helper — deposit ETH into cWETH for a bidder and set emelBid as operator
    */
   async function fundBidderWithCweth(bidder: Signer, ethAmount: bigint): Promise<void> {
     const bidderAddr = await bidder.getAddress();
     // deposit ETH to get cWETH
     await cweth.connect(bidder).deposit(bidderAddr, { value: ethAmount });
 
-    // Set hook as operator on cWETH so hook can pull cWETH during placeBid
+    // Set emelBid as operator on cWETH so emelBid can pull cWETH during placeBid
     const until = Math.floor(Date.now() / 1000) + 1_000_000;
-    await cweth.connect(bidder).setOperator(hookAddress, BigInt(until));
+    await cweth.connect(bidder).setOperator(emelBidAddress, BigInt(until));
   }
 
   const CWETH_RATE = 1_000_000_000_000n; // 1e12
@@ -68,8 +68,8 @@ export async function deployFixture() {
   return {
     deployer, seller, bidder1, bidder2, decryptor,
     deployerAddress, sellerAddress, bidder1Address, bidder2Address, decryptorAddress,
-    hook, cweth, mockERC20, mockERC721, mockERC7984,
-    hookAddress, cwethAddress, mockERC20Address, mockERC721Address, mockERC7984Address,
+    emelBid, cweth, mockERC20, mockERC721, mockERC7984,
+    emelBidAddress, cwethAddress, mockERC20Address, mockERC721Address, mockERC7984Address,
     fundBidderWithCweth,
     ethToCwethUnits
   };

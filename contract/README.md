@@ -7,7 +7,7 @@
 //    price-curve parameters (start price, decay rate, reserve — all in cWETH
 //    units with 6 decimals).
 // 2. Bidders call placeBid() during the auction window, supplying an encrypted
-//    cWETH bid amount. The hook pulls cWETH from the bidder, compares the bid
+//    cWETH bid amount. The contract pulls cWETH from the bidder, compares the bid
 //    against the current encrypted price via FHE, and emits a DecryptionRequested
 //    event for the off-chain decryptor bot.
 // 3. The decryptor bot resolves each comparison, calls fulfillDecryption() with

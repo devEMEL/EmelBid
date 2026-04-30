@@ -20,24 +20,24 @@ describe("EmelBid — ERC721 Auctions", function () {
   const NFT_URI           = "ipfs://toy-nft";
 
   async function createERC721Auction() {
-    const { hook, seller, sellerAddress, mockERC721, hookAddress, mockERC721Address } = ctx;
+    const { emelBid, seller, sellerAddress, mockERC721, emelBidAddress, mockERC721Address } = ctx;
 
     const mintTx = await mockERC721.connect(seller).mint(NFT_URI);
     const mintReceipt = await mintTx.wait();
     const transferEvent = mintReceipt?.logs.find(l => { try { return mockERC721.interface.parseLog(l)?.name === "Transfer" } catch { return false } });
     const tokenId = mockERC721.interface.parseLog(transferEvent!)!.args.tokenId;
 
-    await mockERC721.connect(seller).approve(hookAddress, tokenId);
+    await mockERC721.connect(seller).approve(emelBidAddress, tokenId);
 
     const encInput = await fhevm
-      .createEncryptedInput(hookAddress, sellerAddress)
+      .createEncryptedInput(emelBidAddress, sellerAddress)
       .add64(ENC_START_PRICE)
       .add64(ENC_DECAY_RATE)
       .add64(ENC_RESERVE)
       .add64(0n)
       .encrypt();
 
-    const tx = await hook.connect(seller).createAuction(
+    const tx = await emelBid.connect(seller).createAuction(
       PUBLIC_START_PRICE,
       encInput.handles[0],
       encInput.handles[1],
@@ -50,23 +50,23 @@ describe("EmelBid — ERC721 Auctions", function () {
       tokenId
     );
     const receipt = await tx.wait();
-    const event = receipt?.logs.find(l => { try { return hook.interface.parseLog(l)?.name === "AuctionCreated" } catch { return false } });
-    const parsed = hook.interface.parseLog(event!);
+    const event = receipt?.logs.find(l => { try { return emelBid.interface.parseLog(l)?.name === "AuctionCreated" } catch { return false } });
+    const parsed = emelBid.interface.parseLog(event!);
     return { auctionId: parsed!.args.auctionId, tokenId };
   }
 
-  it("should create an ERC721 auction and pull NFT into hook", async function () {
-    const { mockERC721, hookAddress } = ctx;
+  it("should create an ERC721 auction and pull NFT into emelBid", async function () {
+    const { mockERC721, emelBidAddress } = ctx;
     const { auctionId, tokenId } = await createERC721Auction();
-    expect(await mockERC721.ownerOf(tokenId)).to.equal(hookAddress);
+    expect(await mockERC721.ownerOf(tokenId)).to.equal(emelBidAddress);
 
-    const auction = await ctx.hook.getAuction(auctionId);
+    const auction = await ctx.emelBid.getAuction(auctionId);
     expect(auction.assetType).to.equal(1n); // ERC721
     expect(auction.tokenIdOrAmount).to.equal(tokenId);
   });
 
   it("should allow a bidder to place a bid", async function () {
-    const { hook, bidder1, hookAddress, fundBidderWithCweth, ethToCwethUnits } = ctx;
+    const { emelBid, bidder1, emelBidAddress, fundBidderWithCweth, ethToCwethUnits } = ctx;
     const { auctionId } = await createERC721Auction();
 
     const bidEth = ethers.parseEther("0.01");
@@ -74,11 +74,11 @@ describe("EmelBid — ERC721 Auctions", function () {
     await fundBidderWithCweth(bidder1, bidEth * 2n);
 
     const encInput = await fhevm
-      .createEncryptedInput(hookAddress, ctx.bidder1Address)
+      .createEncryptedInput(emelBidAddress, ctx.bidder1Address)
       .add64(bidUnits)
       .encrypt();
 
-    const tx = await hook.connect(bidder1).placeBid(
+    const tx = await emelBid.connect(bidder1).placeBid(
       auctionId,
       encInput.handles[0],
       encInput.inputProof
@@ -86,16 +86,16 @@ describe("EmelBid — ERC721 Auctions", function () {
     const receipt = await tx.wait();
 
     const event = receipt?.logs.find((log: any) => {
-      try { return hook.interface.parseLog(log)?.name === "DecryptionRequested"; }
+      try { return emelBid.interface.parseLog(log)?.name === "DecryptionRequested"; }
       catch { return false; }
     });
     expect(event).to.not.be.undefined;
-    const parsed = hook.interface.parseLog(event!);
+    const parsed = emelBid.interface.parseLog(event!);
     expect(parsed!.args.bidder).to.equal(ctx.bidder1Address);
   });
 
   it("should transfer to the winner", async function () {
-    const { hook, bidder1, decryptor, mockERC721, bidder1Address, fundBidderWithCweth, ethToCwethUnits } = ctx;
+    const { emelBid, bidder1, decryptor, mockERC721, bidder1Address, fundBidderWithCweth, ethToCwethUnits } = ctx;
     const { auctionId, tokenId } = await createERC721Auction();
 
     const bidEth = ethers.parseEther("0.1");
@@ -103,22 +103,22 @@ describe("EmelBid — ERC721 Auctions", function () {
     await fundBidderWithCweth(bidder1, bidEth * 2n);
 
     const encInput = await fhevm
-      .createEncryptedInput(ctx.hookAddress, bidder1Address)
+      .createEncryptedInput(ctx.emelBidAddress, bidder1Address)
       .add64(bidUnits)
       .encrypt();
 
-    let tx = await hook.connect(bidder1).placeBid(auctionId, encInput.handles[0], encInput.inputProof);
+    let tx = await emelBid.connect(bidder1).placeBid(auctionId, encInput.handles[0], encInput.inputProof);
     let receipt = await tx.wait();
-    const event = receipt?.logs.find(l => { try { return hook.interface.parseLog(l)?.name === "DecryptionRequested" } catch { return false } });
-    const requestId = hook.interface.parseLog(event!)!.args.requestId;
+    const event = receipt?.logs.find(l => { try { return emelBid.interface.parseLog(l)?.name === "DecryptionRequested" } catch { return false } });
+    const requestId = emelBid.interface.parseLog(event!)!.args.requestId;
 
-    await hook.connect(decryptor).fulfillDecryption(requestId, true);
+    await emelBid.connect(decryptor).fulfillDecryption(requestId, true);
 
     expect(await mockERC721.ownerOf(tokenId)).to.equal(bidder1Address);
   });
 
   it("should refund the loser", async function () {
-    const { hook, seller, sellerAddress, bidder1, decryptor, cweth, bidder1Address, fundBidderWithCweth, ethToCwethUnits, cwethAddress, mockERC721 } = ctx;
+    const { emelBid, seller, sellerAddress, bidder1, decryptor, cweth, bidder1Address, fundBidderWithCweth, ethToCwethUnits, cwethAddress, mockERC721 } = ctx;
     const { auctionId, tokenId } = await createERC721Auction();
 
     const bidEth = ethers.parseEther("0.001"); // 1,000 units < reserve 2,000
@@ -129,29 +129,29 @@ describe("EmelBid — ERC721 Auctions", function () {
     const clearBefore = await fhevm.userDecryptEuint(FhevmType.euint64, balBefore, cwethAddress, bidder1);
 
     const encInput = await fhevm
-      .createEncryptedInput(ctx.hookAddress, bidder1Address)
+      .createEncryptedInput(ctx.emelBidAddress, bidder1Address)
       .add64(bidUnits)
       .encrypt();
 
-    let tx = await hook.connect(bidder1).placeBid(auctionId, encInput.handles[0], encInput.inputProof);
+    let tx = await emelBid.connect(bidder1).placeBid(auctionId, encInput.handles[0], encInput.inputProof);
     let receipt = await tx.wait();
-    const event = receipt?.logs.find(l => { try { return hook.interface.parseLog(l)?.name === "DecryptionRequested" } catch { return false } });
-    const requestId = hook.interface.parseLog(event!)!.args.requestId;
+    const event = receipt?.logs.find(l => { try { return emelBid.interface.parseLog(l)?.name === "DecryptionRequested" } catch { return false } });
+    const requestId = emelBid.interface.parseLog(event!)!.args.requestId;
 
     const balAfter = await cweth.connect(bidder1).confidentialBalanceOf(bidder1Address);
     const clearAfter = await fhevm.userDecryptEuint(FhevmType.euint64, balAfter, cwethAddress, bidder1);
     expect(clearBefore).to.equal(clearAfter + bidUnits);
 
-    await hook.connect(decryptor).fulfillDecryption(requestId, false);
+    await emelBid.connect(decryptor).fulfillDecryption(requestId, false);
 
     // seller GETS BACK THEIR NFT after expiry
     await ethers.provider.send("hardhat_mine", ["0x" + (DURATION + 1n).toString(16)]);
-    await hook.connect(seller).expireAuction(auctionId);
+    await emelBid.connect(seller).expireAuction(auctionId);
     expect(await mockERC721.ownerOf(tokenId)).to.equal(sellerAddress);
   });
 
   it("should allow seller to claim proceeds", async function () {
-    const { hook, seller, bidder1, decryptor, cweth, sellerAddress, fundBidderWithCweth, ethToCwethUnits, cwethAddress, bidder1Address } = ctx;
+    const { emelBid, seller, bidder1, decryptor, cweth, sellerAddress, fundBidderWithCweth, ethToCwethUnits, cwethAddress, bidder1Address } = ctx;
     const { auctionId } = await createERC721Auction();
 
     const bidEth = ethers.parseEther("0.1");
@@ -159,21 +159,21 @@ describe("EmelBid — ERC721 Auctions", function () {
     await fundBidderWithCweth(bidder1, bidEth * 2n);
 
     const encInput = await fhevm
-      .createEncryptedInput(ctx.hookAddress, bidder1Address)
+      .createEncryptedInput(ctx.emelBidAddress, bidder1Address)
       .add64(bidUnits)
       .encrypt();
 
-    let tx = await hook.connect(bidder1).placeBid(auctionId, encInput.handles[0], encInput.inputProof);
+    let tx = await emelBid.connect(bidder1).placeBid(auctionId, encInput.handles[0], encInput.inputProof);
     let receipt = await tx.wait();
-    const event = receipt?.logs.find(l => { try { return hook.interface.parseLog(l)?.name === "DecryptionRequested" } catch { return false } });
-    const requestId = hook.interface.parseLog(event!)!.args.requestId;
+    const event = receipt?.logs.find(l => { try { return emelBid.interface.parseLog(l)?.name === "DecryptionRequested" } catch { return false } });
+    const requestId = emelBid.interface.parseLog(event!)!.args.requestId;
 
-    await hook.connect(decryptor).fulfillDecryption(requestId, true);
+    await emelBid.connect(decryptor).fulfillDecryption(requestId, true);
 
-    expect(await hook.getWinner(auctionId)).to.equal(bidder1Address);
+    expect(await emelBid.getWinner(auctionId)).to.equal(bidder1Address);
 
 
-    await hook.connect(seller).withdrawProceeds(auctionId);
+    await emelBid.connect(seller).withdrawProceeds(auctionId);
 
     const balAfter = await cweth.connect(seller).confidentialBalanceOf(sellerAddress);
     const clearAfter = await fhevm.userDecryptEuint(FhevmType.euint64, balAfter, cwethAddress, seller);
