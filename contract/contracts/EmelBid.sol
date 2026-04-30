@@ -1,621 +1,362 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.27;
 
-import {BaseHook} from "@uniswap/v4-periphery/src/utils/BaseHook.sol";
-import {Hooks} from "@uniswap/v4-core/src/libraries/Hooks.sol";
-import {IPoolManager} from "@uniswap/v4-core/src/interfaces/IPoolManager.sol";
-import {PoolKey} from "@uniswap/v4-core/src/types/PoolKey.sol";
-import {PoolId, PoolIdLibrary} from "@uniswap/v4-core/src/types/PoolId.sol";
-import {BalanceDelta} from "@uniswap/v4-core/src/types/BalanceDelta.sol";
-import {SwapParams} from "@uniswap/v4-core/src/types/PoolOperation.sol";
-import {BeforeSwapDelta, BeforeSwapDeltaLibrary} from "@uniswap/v4-core/src/types/BeforeSwapDelta.sol";
-import {Currency, CurrencyLibrary} from "@uniswap/v4-core/src/types/Currency.sol";
-
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {IERC721} from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 
-import {FHE, externalEuint64, euint64, externalEuint256, euint256, ebool} from "@fhevm/solidity/lib/FHE.sol";
+import {FHE, externalEuint64, euint64, ebool} from "@fhevm/solidity/lib/FHE.sol";
 import {ZamaEthereumConfig} from "@fhevm/solidity/config/ZamaConfig.sol";
 
 interface ICWETH {
-    function transferFrom(address from, address to, euint64 amount) external returns (euint64);
-    function transfer(address to, euint64 amount) external returns (euint64);
-    function deposit(address to) external payable;
+    function confidentialTransferFrom(address from, address to, euint64 amount) external returns (euint64);
+    function confidentialTransfer(address to, euint64 amount) external returns (euint64);
 }
 
-interface IConfidentialERC20 {
-    function ConfidentialTransferFrom(address from, address to, euint64 amount) external returns (euint64);
-    function ConfidentialTransfer(address to, euint64 amount) external returns (euint64);
+interface IERC7984 {
+    function confidentialTransferFrom(address from, address to, euint64 amount) external returns (euint64);
+    function confidentialTransfer(address to, euint64 amount) external returns (euint64);
 }
 
-
-
-contract EmelBid is
-    BaseHook,
-    ReentrancyGuard,
-    ZamaEthereumConfig,
-    Ownable
-{
+contract EmelBid is ReentrancyGuard, ZamaEthereumConfig, Ownable {
     using SafeERC20 for IERC20;
-    using PoolIdLibrary for PoolKey;
-    using CurrencyLibrary for Currency;
 
-
-    enum AssetType { ERC20, ERC721, CONFIDENTIAL }
+    enum AssetType { ERC20, ERC721, Confidential }
 
     struct AuctionConfig {
         address seller;
 
-        uint256 publicStartPrice;   // plaintext anchor in cWETH token units (6 decimals)
+        uint256 publicStartPrice;
 
-        // Encrypted price curve — all in cWETH token units (6 decimals)
-        euint64 encStartPrice;      // real starting price (hidden)
-        euint64 encDecayRate;       // cWETH drop per block (hidden)
-        euint64 encReserve;         // floor / reserve price (hidden)
+        euint64 encStartPrice;
+        euint64 encDecayRate;
+        euint64 encReserve;
 
         uint256 startBlock;
-        uint256 duration;           // auction length in blocks
+        uint256 duration;
 
         AssetType assetType;
-        address asset;              // ERC20 / ERC721 / ConfidentialERC20 address
-        uint256 tokenIdOrAmount;    // tokenId for ERC721, amount for ERC20/CONFIDENTIAL
+        address asset;
 
-        // Proceeds stored as encrypted cWETH for seller to claim
+        uint256 tokenIdOrAmount; // ERC20 / ERC721
+        euint64 encAmount;       // Confidential
+
         euint64 proceeds;
         bool proceedsClaimed;
-
         bool settled;
     }
 
-    /// @dev One entry per pending decryption — bot reads requestId from event
     struct DecryptionRequest {
-        ebool isWinning;  // encrypted comparison result — bot decrypts this
+        ebool isWinning;
         address bidder;
-        euint64 bidAmount;  // encrypted cWETH bid — held until fulfillDecryption()
-        PoolId poolId;
+        euint64 bidAmount;
+        bytes32 auctionId;
     }
 
-   
-
-    mapping(PoolId => AuctionConfig) public auctions;
+    mapping(bytes32 => AuctionConfig) public auctions;
     mapping(uint256 => DecryptionRequest) public decryptionRequests;
+    mapping(bytes32 => bool) public pendingSettlement;
     mapping(address => uint256) public sellerNonce;
-    mapping(PoolId => address) public auctionWinner;
-    mapping(PoolId => address[]) public auctionBidders;
-    mapping(address => mapping(PoolId => euint64)) public userBid;
+    mapping(bytes32 => address) public auctionWinner;
+    mapping(bytes32 => address[]) public auctionBidders;
+
+    mapping(address => mapping(bytes32 => euint64)) public userBid;
 
     uint256 public requestId;
-    ICWETH public immutable CWETH;
+    ICWETH public CWETH;
     address public decryptor;
 
-    // sqrtPrice 1:1 — used for pool init only
-    uint160 private constant SQRT_PRICE_1_1 = 79228162514264337593543950336;
-
-
-    event AuctionCreated(
-        PoolId indexed poolId,
-        address indexed seller,
-        address currency0,
-        address currency1,
-        uint24 fee,
-        int24 tickSpacing,
-        address hooks,
-        uint256 publicStartPrice,
-        uint256 startBlock,
-        uint256 duration,
-        AssetType assetType,
-        address asset,
-        uint256 tokenIdOrAmount
-    );
-
-    /// @notice Bot listens to this — decrypts isWinning, calls fulfillDecryption()
-    event DecryptionRequested(
-        uint256 indexed requestId,
-        ebool isWinning,
-        PoolId poolId,
-        address bidder
-    );
-
-    event DecryptionFulfilled(
-        uint256 indexed requestId,
-        bool isWinning
-    );
-
-    event AuctionSettled(
-        PoolId indexed poolId,
-        address indexed winner
-    );
-
-    event BidRefunded(
-        PoolId indexed poolId,
-        address indexed bidder
-    );
-
-    event ProceedsClaimed(
-        PoolId indexed poolId,
-        address indexed seller
-    );
-
-    event AuctionExpired(PoolId indexed poolId);
-
-
-    error AuctionNotFound();
-    error AuctionNotStarted();
-    error AuctionEnded();
-    error AuctionAlreadySettled();
-    error NoBidAmount();
-    error InvalidDuration();
-    error InvalidPublicStartPrice();
-    error NotSeller();
-    error NotSettled();
-    error AlreadyClaimed();
-    error ETHTransferFailed();
-    error RequestNotFound();
+    // EVENTS
+    event AuctionCreated(bytes32 indexed auctionId, address indexed seller);
+    event DecryptionRequested(uint256 indexed requestId, bytes32 indexed auctionId, address bidder);
+    event DecryptionFulfilled(uint256 indexed requestId, bool isWinning);
+    event AuctionSettled(bytes32 indexed auctionId, address winner);
+    event BidRefunded(bytes32 indexed auctionId, address bidder);
+    event AuctionExpired(bytes32 indexed auctionId);
+    event ProceedsClaimed(bytes32 indexed auctionId);
 
     modifier onlyDecryptor() {
         require(msg.sender == decryptor, "Not decryptor");
         _;
     }
 
-
-    constructor(IPoolManager _poolManager, address _cweth, address _decryptor)
-        BaseHook(_poolManager)
-        Ownable(msg.sender)
-    {
+    constructor(address _cweth, address _decryptor) Ownable(msg.sender) {
         CWETH = ICWETH(_cweth);
         decryptor = _decryptor;
     }
-
-
-    function getHookPermissions() public pure override returns (Hooks.Permissions memory) {
-        return Hooks.Permissions({
-            beforeInitialize: false,
-            afterInitialize: true,
-            beforeAddLiquidity: false,
-            afterAddLiquidity: false,
-            beforeRemoveLiquidity: false,
-            afterRemoveLiquidity: false,
-            beforeSwap: true,
-            afterSwap: true,
-            beforeDonate: false,
-            afterDonate: false,
-            beforeSwapReturnDelta: false,
-            afterSwapReturnDelta: false,
-            afterAddLiquidityReturnDelta: false,
-            afterRemoveLiquidityReturnDelta: false
-        });
-    }
-
 
     function createAuction(
         uint256 publicStartPrice,
         externalEuint64 encStartPrice,
         externalEuint64 encDecayRate,
         externalEuint64 encReserve,
+        externalEuint64 encAmountExt,
         bytes calldata inputProof,
         uint256 duration,
         AssetType assetType,
         address asset,
         uint256 tokenIdOrAmount
-    ) external nonReentrant {
-        if (publicStartPrice == 0) revert InvalidPublicStartPrice();
-        if (duration == 0) revert InvalidDuration();
+    ) external nonReentrant returns (bytes32 auctionId) {
+        require(publicStartPrice > 0, "Invalid price");
+        require(duration > 0, "Invalid duration");
 
-        // Pull asset into hook custody — approve or setOperator on frontend first
-        _receiveAsset(assetType, asset, tokenIdOrAmount, msg.sender);
+        auctionId = keccak256(abi.encodePacked(msg.sender, sellerNonce[msg.sender]++));
 
-        // Deploy unique AuctionSlot via CREATE2 — becomes token1 in the pool
-        address auctionSlot = _deployAuctionSlot(
-            msg.sender,
-            sellerNonce[msg.sender]++
-        );
+        euint64 encStart = FHE.fromExternal(encStartPrice, inputProof);
+        euint64 encDecay = FHE.fromExternal(encDecayRate, inputProof);
+        euint64 encReserve_ = FHE.fromExternal(encReserve, inputProof);
 
-        // address(0) < any deployed address — ordering always satisfied
-        PoolKey memory key = PoolKey({
-            currency0: Currency.wrap(address(0)),
-            currency1: Currency.wrap(auctionSlot),
-            fee: 3000,
-            tickSpacing: 60,
-            hooks: IHooks(address(this))
-        });
-
-        bytes memory hookData = abi.encode(
-            msg.sender,
-            publicStartPrice,
-            encStartPrice,
-            encDecayRate,
-            encReserve,
-            inputProof,
-            duration,
-            assetType,
-            asset,
-            tokenIdOrAmount
-        );
-
-        // afterInitialize fires immediately inside this call
-        poolManager.initialize(key, SQRT_PRICE_1_1, hookData);
-    }
-
-
-    function _afterInitialize(
-        address,
-        PoolKey calldata key,
-        uint160,
-        int24,
-        bytes calldata hookData
-    ) internal override returns (bytes4) {
-
-        (
-            address seller,
-            uint256 publicStartPrice,
-            externalEuint64 encStartPriceExt,
-            externalEuint64 encDecayRateExt,
-            externalEuint64 encReserveExt,
-            bytes memory inputProof,
-            uint256 duration,
-            AssetType assetType,
-            address asset,
-            uint256 tokenIdOrAmount
-        ) = abi.decode(hookData, (
-            address, uint256,
-            externalEuint64, externalEuint64, externalEuint64,
-            bytes,
-            uint256, AssetType, address, uint256
-        ));
-
-        euint64 encStart   = FHE.fromExternal(encStartPriceExt, inputProof);
-        euint64 encDecay   = FHE.fromExternal(encDecayRateExt,  inputProof);
-        euint64 encReserve = FHE.fromExternal(encReserveExt,    inputProof);
+        require(FHE.isSenderAllowed(encStart), "Not allowed");
 
         FHE.allowThis(encStart);
         FHE.allowThis(encDecay);
-        FHE.allowThis(encReserve);
+        FHE.allowThis(encReserve_);
 
-        PoolId id = key.toId();
+        euint64 zero = FHE.asEuint64(0);
+        FHE.allowThis(zero);
 
-        // zero euint64 for proceeds placeholder
-        euint64 zeroProceeds = FHE.asEuint64(0);
-        FHE.allowThis(zeroProceeds);
+        AuctionConfig storage auction = auctions[auctionId];
 
-        auctions[id] = AuctionConfig({
-            seller: seller,
-            publicStartPrice: publicStartPrice,
-            encStartPrice: encStart,
-            encDecayRate: encDecay,
-            encReserve: encReserve,
-            startBlock: block.number,
-            duration: duration,
-            assetType: assetType,
-            asset: asset,
-            tokenIdOrAmount: tokenIdOrAmount,
-            proceeds: zeroProceeds,
-            proceedsClaimed: false,
-            settled: false
-        });
+        auction.seller = msg.sender;
+        auction.publicStartPrice = publicStartPrice;
+        auction.encStartPrice = encStart;
+        auction.encDecayRate = encDecay;
+        auction.encReserve = encReserve_;
+        auction.startBlock = block.number;
+        auction.duration = duration;
+        auction.assetType = assetType;
+        auction.asset = asset;
+        auction.proceeds = zero;
 
-        emit AuctionCreated(
-            id,
-            seller,
-            Currency.unwrap(key.currency0),
-            Currency.unwrap(key.currency1),
-            key.fee,
-            key.tickSpacing,
-            address(key.hooks),
-            publicStartPrice,
-            block.number,
-            duration,
-            assetType,
-            asset,
-            tokenIdOrAmount
-        );
+        if (assetType == AssetType.Confidential) {
+            euint64 amount = FHE.fromExternal(encAmountExt, inputProof);
+            require(FHE.isSenderAllowed(amount), "Not allowed");
 
-        return BaseHook.afterInitialize.selector;
+
+            auction.encAmount = amount;
+
+            
+            FHE.allowTransient(amount, asset);
+            IERC7984(asset).confidentialTransferFrom(msg.sender, address(this), amount);
+            FHE.allow(amount, asset);
+            FHE.allowThis(amount);
+            
+            FHE.allow(amount, msg.sender);
+            FHE.allow(amount, decryptor);
+
+
+        } else if (assetType == AssetType.ERC721) {
+            auction.tokenIdOrAmount = tokenIdOrAmount;
+            IERC721(asset).transferFrom(msg.sender, address(this), tokenIdOrAmount);
+
+        } else {
+            auction.tokenIdOrAmount = tokenIdOrAmount;
+            IERC20(asset).safeTransferFrom(msg.sender, address(this), tokenIdOrAmount);
+        }
+
+        emit AuctionCreated(auctionId, msg.sender);
     }
 
-    function _beforeSwap(
-        address sender,
-        PoolKey calldata key,
-        SwapParams calldata,
-        bytes calldata hookData
-    ) internal override returns (bytes4, BeforeSwapDelta, uint24) {
+    function placeBid(bytes32 auctionId, externalEuint64 encBidExt, bytes calldata proof) external nonReentrant {
+        AuctionConfig storage auction = auctions[auctionId];
 
-        PoolId id = key.toId();
-        AuctionConfig storage auction = auctions[id];
-
-        if (auction.seller == address(0)) revert AuctionNotFound();
-        if (block.number < auction.startBlock) revert AuctionNotStarted();
-        if (block.number > auction.startBlock + auction.duration) revert AuctionEnded();
-        if (auction.settled) revert AuctionAlreadySettled();
-
-        (externalEuint64 encBidExt, bytes memory proof, address msgSender) =
-            abi.decode(hookData, (externalEuint64, bytes, address));
+        require(!auction.settled, "Settled");
+        require(!pendingSettlement[auctionId], "Pending");
+        require(block.number >= auction.startBlock, "Not started");
+        require(block.number <= auction.startBlock + auction.duration, "Ended");
 
         euint64 encBid = FHE.fromExternal(encBidExt, proof);
-        FHE.allowThis(encBid);
-        FHE.allow(encBid, msgSender);
-
-        // Bidder must have called setOperator(address(this)) on cWETH frontend
+        require(FHE.isSenderAllowed(encBid), "Not allowed");
 
         FHE.allowTransient(encBid, address(CWETH));
-        CWETH.confidentialTransferFrom(msgSender, address(this), encBid);
+        CWETH.confidentialTransferFrom(msg.sender, address(this), encBid);
 
-        // store bid per user per auction
-        userBid[msgSender][id] = encBid;
-        FHE.allow(encBid, msgSender);  // bidder can decrypt their own bid
+        userBid[msg.sender][auctionId] = encBid;
+        FHE.allowThis(encBid);
+        FHE.allow(encBid, msg.sender);
+        FHE.allow(encBid, decryptor);
+        FHE.allow(encBid, address(CWETH));
+        auctionBidders[auctionId].push(msg.sender);
 
-        // track bidder in auction
-        auctionBidders[id].push(msgSender);
 
-        // compute current price homomorphically
         euint64 currentPrice = _currentEncPrice(auction);
-
-        // FHE comparison: encBid >= encCurrentPrice? 
         ebool isWinning = FHE.ge(encBid, currentPrice);
+
         FHE.allowThis(isWinning);
-        FHE.allow(isWinning, msgSender);
-        FHE.allow(isWinning, _decryptor);
+        FHE.allow(isWinning, msg.sender);
+        FHE.allow(isWinning, decryptor);
 
-        // store decryption request
-        uint256 currentRequestId = requestId;
+        uint256 id = requestId++;
 
-        decryptionRequests[currentRequestId] = DecryptionRequest({
+        decryptionRequests[id] = DecryptionRequest({
             isWinning: isWinning,
-            bidder: msgSender,
+            bidder: msg.sender,
             bidAmount: encBid,
-            poolId: id
+            auctionId: auctionId
         });
 
-        requestId++;
+        pendingSettlement[auctionId] = true;
 
-        emit DecryptionRequested(currentRequestId, isWinning, id, msgSender);
-
-        return (
-            BaseHook.beforeSwap.selector,
-            BeforeSwapDeltaLibrary.ZERO_DELTA,
-            0
-        );
+        emit DecryptionRequested(id, auctionId, msg.sender);
     }
 
-
-
-    function _afterSwap(
-        address,
-        PoolKey calldata,
-        SwapParams calldata,
-        BalanceDelta,
-        bytes calldata
-    ) internal override returns (bytes4, int128) {
-        return (BaseHook.afterSwap.selector, 0);
-    }
-
-
-    function fulfillDecryption(
-        uint256 _requestId,
-        bool _isWinning
-    ) external nonReentrant onlyDecryptor {
+    function fulfillDecryption(uint256 _requestId, bool _isWinning) external onlyDecryptor nonReentrant {
         DecryptionRequest storage req = decryptionRequests[_requestId];
-        if (req.bidder == address(0)) revert RequestNotFound();
+        require(req.bidder != address(0), "Invalid");
 
         address bidder = req.bidder;
         euint64 bidAmount = req.bidAmount;
-        PoolId poolId = req.poolId;
+        bytes32 auctionId = req.auctionId;
 
-        // Delete before acting — prevents re-entrancy on same requestId
         delete decryptionRequests[_requestId];
+
+        AuctionConfig storage auction = auctions[auctionId];
+
+        pendingSettlement[auctionId] = false;
 
         emit DecryptionFulfilled(_requestId, _isWinning);
 
-        AuctionConfig storage auction = auctions[poolId];
-
         if (_isWinning && !auction.settled) {
-            // WINNER
-            auction.settled  = true;
-            auction.proceeds = bidAmount;   // encrypted cWETH for seller
+            auction.settled = true;
+
+            auction.proceeds = bidAmount;
             FHE.allowThis(auction.proceeds);
-            FHE.allow(auction.proceeds, auction.seller); // seller can decrypt proceeds
+            FHE.allow(auction.proceeds, auction.seller);
 
-            auctionWinner[poolId] = bidder; // record winner
+            auctionWinner[auctionId] = bidder;
 
-            _sendAssetToWinner(auction, bidder);
+            _sendAsset(auction, bidder);
 
-            emit AuctionSettled(poolId, bidder);
-
+            emit AuctionSettled(auctionId, bidder);
         } else {
-            // LOSER — refund encrypted cWETH
+            FHE.allowThis(bidAmount);
             FHE.allow(bidAmount, bidder);
-            CWETH.ConfidentialTransfer(bidder, bidAmount);
+            
+            CWETH.confidentialTransfer(bidder, bidAmount);
 
-            emit BidRefunded(poolId, bidder);
+            emit BidRefunded(auctionId, bidder);
         }
     }
 
-    // =========================================================================
-    //                       SELLER: WITHDRAW PROCEEDS
-    // =========================================================================
+    function withdrawProceeds(bytes32 auctionId) external nonReentrant {
+        AuctionConfig storage auction = auctions[auctionId];
 
-    /**
-     * @notice Seller calls this after settlement to claim encrypted cWETH proceeds.
-     *  Seller can then call cWETH withdraw() to convert back to ETH if needed.
-     */
-    function withdrawProceeds(PoolId poolId) external nonReentrant {
-        AuctionConfig storage auction = auctions[poolId];
-
-        if (auction.seller != msg.sender) revert NotSeller();
-        if (!auction.settled)             revert NotSettled();
-        if (auction.proceedsClaimed)      revert AlreadyClaimed();
+        require(msg.sender == auction.seller, "Not seller");
+        require(auction.settled, "Not settled");
+        require(!auction.proceedsClaimed, "Claimed");
 
         auction.proceedsClaimed = true;
 
         FHE.allow(auction.proceeds, msg.sender);
-        CWETH.transfer(msg.sender, auction.proceeds);
+        CWETH.confidentialTransfer(msg.sender, auction.proceeds);
 
-        emit ProceedsClaimed(poolId, msg.sender);
+        emit ProceedsClaimed(auctionId);
     }
 
+    // can be called by anyone
+    function expireAuction(bytes32 auctionId) external nonReentrant {
+        AuctionConfig storage auction = auctions[auctionId];
 
-    /**
-     * @notice Anyone can call after duration passes with no winner.
-     *  Returns asset to seller. No cWETH involved since no winner bid was accepted.
-     */
-    function expireAuction(PoolId poolId) external nonReentrant {
-        AuctionConfig storage auction = auctions[poolId];
-
-        if (auction.seller == address(0)) revert AuctionNotFound();
-        if (auction.settled)              revert AuctionAlreadySettled();
-        require(
-            block.number > auction.startBlock + auction.duration,
-            "Auction still active"
-        );
+        require(!auction.settled, "Settled");
+        require(block.number > auction.startBlock + auction.duration, "Active");
 
         auction.settled = true;
-        _sendAssetToWinner(auction, auction.seller);
 
-        emit AuctionExpired(poolId);
+        _sendAsset(auction, auction.seller);
+
+        emit AuctionExpired(auctionId);
     }
 
-    // =========================================================================
-    //                          INTERNAL HELPERS
-    // =========================================================================
+    function _currentEncPrice(AuctionConfig storage auction) internal returns (euint64) {
+        uint64 elapsed = uint64(block.number - auction.startBlock);
 
-    /**
-     * @notice Compute current encrypted price.
-     *  currentPrice = max(encStartPrice - (encDecayRate * blocksElapsed), encReserve)
-     *  All in cWETH token units (6 decimals). All in FHE encrypted space.
-     */
-    function _currentEncPrice(
-        AuctionConfig storage auction
-    ) internal view returns (euint64) {
-        uint256 blocksElapsed = block.number - auction.startBlock;
+        euint64 decay = FHE.mul(auction.encDecayRate, FHE.asEuint64(elapsed));
 
-        euint64 decayed = FHE.mul(
-            auction.encDecayRate,
-            FHE.asEuint64(uint64(blocksElapsed))
+        ebool underflow = FHE.gt(decay, auction.encStartPrice);
+
+        euint64 safe = FHE.select(
+            underflow,
+            FHE.asEuint64(0),
+            FHE.sub(auction.encStartPrice, decay)
         );
 
-        euint64 price = FHE.sub(auction.encStartPrice, decayed);
-
-        return FHE.max(price, auction.encReserve);
+        return FHE.max(safe, auction.encReserve);
     }
 
-    /**
-     * @notice Transfer auctioned asset to winner or back to seller on expiry.
-     */
-    function _sendAssetToWinner(
-        AuctionConfig storage auction,
-        address recipient
-    ) internal {
+    function _sendAsset(AuctionConfig storage auction, address recipient) internal {
         if (auction.assetType == AssetType.ERC721) {
-            IERC721(auction.asset).transferFrom(
-                address(this),
-                recipient,
-                auction.tokenIdOrAmount
-            );
+            IERC721(auction.asset).transferFrom(address(this), recipient, auction.tokenIdOrAmount);
         } else if (auction.assetType == AssetType.ERC20) {
-            IERC20(auction.asset).safeTransfer(
-                recipient,
-                auction.tokenIdOrAmount
-            );
+            IERC20(auction.asset).safeTransfer(recipient, auction.tokenIdOrAmount);
         } else {
-            // Confidential ERC-20 (ERC-7984, euint64)
-            IConfidentialERC20(auction.asset).ConfidentialTransfer(
-                recipient,
-                FHE.asEuint64(uint64(auction.tokenIdOrAmount))
-            );
+            FHE.allowTransient(auction.encAmount, auction.asset);
+            IERC7984(auction.asset).confidentialTransfer(recipient, auction.encAmount);
         }
     }
 
-    /**
-     * @notice Pull auctioned asset from seller into hook custody.
-     */
-    function _receiveAsset(
-        AssetType assetType,
-        address asset,
-        uint256 tokenIdOrAmount,
-        address seller
-    ) internal {
-        if (assetType == AssetType.ERC721) {
-            IERC721(asset).transferFrom(seller, address(this), tokenIdOrAmount);
-        } else if (assetType == AssetType.ERC20) {
-            IERC20(asset).safeTransferFrom(seller, address(this), tokenIdOrAmount);
-        } else {
-            // Confidential ERC-20 — seller sets hook as operator on frontend
-            IConfidentialERC20(asset).transferFrom(
-                seller,
-                address(this),
-                FHE.asEuint64(uint64(tokenIdOrAmount))
-            );
-        }
+    function setDecryptor(address _decryptor) external onlyOwner {
+        decryptor = _decryptor;
+    }
+
+    function setCWETH(address _cweth) external onlyOwner {
+        CWETH = ICWETH(_cweth);
     }
 
 
-    function _deployAuctionSlot(
-        address seller,
-        uint256 nonce
-    ) internal returns (address deployed) {
-        bytes32 salt = keccak256(abi.encodePacked(seller, nonce));
-        bytes memory bc = type(AuctionSlot).creationCode;
+    // -----------------------------------------------------------------------
+    // View helpers
+    // -----------------------------------------------------------------------
 
-        assembly {
-            deployed := create2(0, add(bc, 0x20), mload(bc), salt)
-        }
-        require(deployed != address(0), "AuctionSlot deployment failed");
+    function getAuction(bytes32 auctionId)
+        external view
+        returns (AuctionConfig memory)
+    {
+        return auctions[auctionId];
     }
 
-    function predictAuctionSlot(
-        address seller,
-        uint256 nonce
-    ) external view returns (address) {
-        bytes32 salt         = keccak256(abi.encodePacked(seller, nonce));
-        bytes32 bytecodeHash = keccak256(type(AuctionSlot).creationCode);
-
-        return address(uint160(uint256(keccak256(abi.encodePacked(
-            bytes1(0xff),
-            address(this),
-            salt,
-            bytecodeHash
-        )))));
+    function getAuctionBidders(bytes32 auctionId)
+        external view
+        returns (address[] memory)
+    {
+        return auctionBidders[auctionId];
     }
 
-
-
-    function getAuction(PoolId poolId) external view returns (AuctionConfig memory) {
-        return auctions[poolId];
+    function getBidCount(bytes32 auctionId)
+        external view
+        returns (uint256)
+    {
+        return auctionBidders[auctionId].length;
     }
 
-    /// @notice Get all bidders for an auction
-    function getAuctionBidders(PoolId poolId) external view returns (address[] memory) {
-        return auctionBidders[poolId];
+    function getWinner(bytes32 auctionId)
+        external view
+        returns (address)
+    {
+        return auctionWinner[auctionId];
     }
 
-    /// @notice Get total number of bids for an auction
-    function getBidCount(PoolId poolId) external view returns (uint256) {
-        return auctionBidders[poolId].length;
+    function getUserBid(address user, bytes32 auctionId)
+        external view
+        returns (euint64)
+    {
+        return userBid[user][auctionId];
     }
 
-    /// @notice Get the winner of a settled auction
-    function getWinner(PoolId poolId) external view returns (address) {
-        return auctionWinner[poolId];
-    }
-
-    /// @notice Get a specific user's encrypted bid for an auction
-    ///         User must have FHE permission to decrypt their own bid
-    function getUserBid(address user, PoolId poolId) external view returns (euint64) {
-        return userBid[user][poolId];
-    }
-
-    function getDecryptionRequest(uint256 _requestId) external view returns (
-        address bidder,
-        PoolId  poolId
-    ) {
+    function getDecryptionRequest(uint256 _requestId)
+        external view
+        returns (address bidder, bytes32 auctionId)
+    {
         DecryptionRequest storage req = decryptionRequests[_requestId];
-        return (req.bidder, req.poolId);
+        return (req.bidder, req.auctionId);
     }
 
-    function isAuctionActive(PoolId poolId) external view returns (bool) {
-        AuctionConfig storage a = auctions[poolId];
+    function isAuctionActive(bytes32 auctionId)
+        external view
+        returns (bool)
+    {
+        AuctionConfig storage a = auctions[auctionId];
         return (
             !a.settled &&
             block.number >= a.startBlock &&
@@ -623,21 +364,15 @@ contract EmelBid is
         );
     }
 
-    function blocksRemaining(PoolId poolId) external view returns (uint256) {
-        AuctionConfig storage a = auctions[poolId];
+    function blocksRemaining(bytes32 auctionId)
+        external view
+        returns (uint256)
+    {
+        AuctionConfig storage a = auctions[auctionId];
         uint256 endBlock = a.startBlock + a.duration;
         if (block.number >= endBlock) return 0;
         return endBlock - block.number;
     }
 
-    // Only owner can update the cWETH contract address if needed
-    function setCWETH(address _cweth) external onlyOwner {
-        CWETH = ICWETH(_cweth);
-    }
 
-    function setDecryptor(address _decryptor) external onlyOwner {
-        decryptor = _decryptor;
-    }
-
-    receive() external payable {}
 }

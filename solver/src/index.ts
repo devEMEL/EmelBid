@@ -22,7 +22,7 @@ const ABI = parseAbi([
 ]);
 
 async function main() {
-  console.log('--- Dutch Auction Hook Bot ---');
+  console.log('--- Dutch Auction Bot ---');
 
   if (!PRIVATE_KEY) {
     console.error('PRIVATE_KEY not found in .env');

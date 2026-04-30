@@ -11,18 +11,12 @@
     "@fhevm/solidity": "^0.10.0",
     "@openzeppelin/confidential-contracts": "^0.3.0",
     "@openzeppelin/contracts": "^5.4.0",
-    "@uniswap/sdk-core": "^7.9.0",
-    "@uniswap/v3-sdk": "^3.27.0",
-    "@uniswap/v4-core": "^1.0.2",
-    "@uniswap/v4-periphery": "^1.0.3",
-    "@uniswap/v4-sdk": "^1.23.0",
     "@zama-fhe/oracle-solidity": "^0.1.0",
     "dotenv": "^17.2.3",
     "encrypted-types": "^0.0.4",
     "jsbi": "^3.2.5",
     "solc": "^0.8.27",
-    "solmate": "^6.8.0",
-    "v4-hooks-public": "github:Uniswap/v4-hooks-public"
+    "solmate": "^6.8.0"
   },
   "devDependencies": {
     "@fhevm/hardhat-plugin": "^0.3.0-1",
@@ -65,13 +59,6 @@
   "scripts": {
     "compile": "cross-env TS_NODE_TRANSPILE_ONLY=true hardhat compile",
     "coverage": "cross-env SOLIDITY_COVERAGE=true hardhat coverage --solcoverjs ./.solcover.js --temp artifacts --testfiles \"test/**/*.ts\" && npm run typechain",
-    "lint": "npm run lint:sol && npm run lint:ts && npm run prettier:check",
-    "lint:sol": "solhint --max-warnings 0 \"contracts/**/*.sol\"",
-    "lint:ts": "eslint --ignore-path ./.eslintignore --ext .js,.ts .",
-    "postcompile": "npm run typechain",
-    "prettier:check": "prettier --check \"**/*.{js,json,md,sol,ts,yml}\"",
-    "prettier:write": "prettier --write \"**/*.{js,json,md,sol,ts,yml}\"",
-    "test": "hardhat test test/PrivacyPoolHook.ts && hardhat test test/PrivacyPoolHook.settlement.ts && hardhat test test/PrivacyPoolHook.shuttle.ts && hardhat test test/PrivacyPoolHook.deltazero.ts --grep \"Pyth Oracle\" && hardhat test test/PrivacyPoolHook.deltazero.ts --grep \"Delta Zero Rebalancing Strategy\" && hardhat test test/PrivacyPoolHook.deltazero.ts --grep \"SimpleLending\"",
     "test:sepolia": "hardhat test --network sepolia",
     "build:ts": "tsc --project tsconfig.json",
     "typechain": "cross-env TS_NODE_TRANSPILE_ONLY=true hardhat typechain",

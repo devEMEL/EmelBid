@@ -47,13 +47,6 @@ contract MockERC721 is ERC721, ERC721URIStorage, ERC721Enumerable {
         return super.supportsInterface(interfaceId);
     }
 
-    function _burn(uint256 tokenId)
-        internal
-        override(ERC721, ERC721URIStorage)
-    {
-        super._burn(tokenId);
-    }
-
     function tokenURI(uint256 tokenId)
         public
         view

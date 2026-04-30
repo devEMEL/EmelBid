@@ -3,8 +3,9 @@ pragma solidity ^0.8.27;
 
 import {ERC7984} from "@openzeppelin/confidential-contracts/token/ERC7984/ERC7984.sol";
 import {FHE, euint64} from "@fhevm/solidity/lib/FHE.sol";
+import {ZamaEthereumConfig} from "@fhevm/solidity/config/ZamaConfig.sol";
 
-contract MockERC7984 is ERC7984 {
+contract MockERC7984 is ERC7984, ZamaEthereumConfig {
     constructor() ERC7984("Emel Confidential Token", "eCT", "") {}
 
     /// @notice Mint encrypted tokens (mock, unrestricted)
