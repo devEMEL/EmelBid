@@ -1,0 +1,27 @@
+type Auction @entity(immutable: false) {
+  id: ID!
+  seller: Bytes! # address
+  asset: Bytes! # address
+  assetType: Int! # uint8
+  tokenIdOrAmount: BigInt! # uint256
+  publicStartPrice: BigInt! # uint256
+  startBlock: BigInt! # uint256
+  duration: BigInt! # uint256
+  settled: Boolean!
+  winner: Bytes # address
+  expired: Boolean!
+  proceedsClaimed: Boolean!
+  bids: [Bid!]! @derivedFrom(field: "auction")
+  createdAtBlock: BigInt!
+  createdAtTimestamp: BigInt!
+}
+
+type Bid @entity(immutable: false) {
+  id: ID! # requestId
+  auction: Auction!
+  bidder: Bytes! # address
+  requestId: BigInt! # uint256
+  isWinning: Boolean
+  timestamp: BigInt!
+  blockNumber: BigInt!
+}
