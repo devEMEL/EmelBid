@@ -3,14 +3,13 @@ import Providers from "@/components/Providers";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import HomePage from "@/app/page";
-import PoolsPage from "@/app/pools/page";
+import AuctionsPage from "@/app/auctions/page";
 import ProfilePage from "@/app/profile/page";
 import ActivityPage from "@/app/activity/page";
 import AddTokenPage from "@/app/add-token/page";
-import CreatePoolPage from "@/app/pools/create/page";
-import PoolDetailsPage from "@/app/pools/id/page";
 import CreatePositionsPage from "@/app/positions/create/page";
 import PositionDetailsPage from "@/app/positions/id/page";
+import FaucetPage from "@/app/faucet/page";
 
 function RootLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -34,14 +33,19 @@ export default function App() {
       <RootLayout>
         <Routes>
           <Route path="/" element={<HomePage />} />
-          <Route path="/pools" element={<PoolsPage />} />
-          <Route path="/pools/create" element={<CreatePoolPage />} />
-          <Route path="/pools/:id" element={<PoolDetailsPage />} />
-          <Route path="/positions/create/:params" element={<CreatePositionsPage />} />
-          <Route path="/positions/:id" element={<PositionDetailsPage />} />
+          <Route path="/faucet" element={<FaucetPage />} />
+          <Route path="/auctions" element={<AuctionsPage />} />
+
+
+          {/* <Route path="/pools/create" element={<CreatePoolPage />} /> */}
+          {/* <Route path="/pools/:id" element={<PoolDetailsPage />} /> */}
+  
           <Route path="/profile" element={<ProfilePage />} />
           <Route path="/activity" element={<ActivityPage />} />
           <Route path="/add-token" element={<AddTokenPage />} />
+
+          
+          
         </Routes>
       </RootLayout>
     </Router>

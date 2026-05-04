@@ -1,16 +1,17 @@
-
-
 import { PrivyProvider } from '@privy-io/react-auth';
 import { WagmiProvider, createConfig } from '@privy-io/wagmi';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { http } from 'wagmi';
 import { useState } from 'react';
-import { arcTestnet } from 'viem/chains';
+import { sepolia } from 'viem/chains';
+import { FheProvider } from './FheProvider';
+import { ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
 export const wagmiConfig = createConfig({
-  chains: [arcTestnet],
+  chains: [sepolia],
   transports: {
-    [arcTestnet.id]: http(),
+    [sepolia.id]: http(),
   },
 });
 
@@ -37,8 +38,8 @@ export default function Providers({ children }: { children: React.ReactNode }) {
     <PrivyProvider
       appId={appId}
       config={{
-        defaultChain: arcTestnet,
-        supportedChains: [arcTestnet],
+        defaultChain: sepolia,
+        supportedChains: [sepolia],
         loginMethods: ['email', 'wallet', 'twitter'],
         appearance: {
           theme: 'dark',
@@ -49,7 +50,20 @@ export default function Providers({ children }: { children: React.ReactNode }) {
     >
       <QueryClientProvider client={queryClient}>
         <WagmiProvider config={wagmiConfig}>
-          {children}
+          <FheProvider>
+            {children}
+            <ToastContainer
+              position="top-right"
+              autoClose={5000}
+              hideProgressBar={false}
+              newestOnTop={false}
+              closeOnClick
+              pauseOnFocusLoss
+              draggable
+              pauseOnHover
+              theme="dark"
+            />
+          </FheProvider>
         </WagmiProvider>
       </QueryClientProvider>
     </PrivyProvider>

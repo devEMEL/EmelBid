@@ -23,8 +23,9 @@ export default function Navbar() {
   };
 
   const navLinks = [
-    { label: 'Swap', href: '/' },
-    { label: 'Pools', href: '/pools' },
+    { label: 'Create', href: '/' },
+    { label: 'Auctions', href: '/auctions' },
+    { label: 'Faucet', href: '/faucet' },
     { label: 'Activity', href: '/activity' },
     { label: 'Profile', href: '/profile' },
   ];
@@ -60,7 +61,7 @@ export default function Navbar() {
                 <>
                   <div className="hidden lg:flex items-center gap-4 px-4 py-2 bg-white/[0.03] border border-white/5 rounded-full">
                     <div className="w-2 h-2 rounded-full bg-primary shadow-[0_0_8px_rgba(255,210,23,0.5)] animate-pulse"></div>
-                    <span className="text-[10px] font-black uppercase tracking-widest text-white/40">Arc Testnet</span>
+                    <span className="text-[10px] font-black uppercase tracking-widest text-white/40">Sepolia Testnet</span>
                   </div>
                   <button 
                     onClick={login}
@@ -74,7 +75,7 @@ export default function Navbar() {
                   <div className="bg-white border border-transparent text-black px-5 h-11 rounded-full flex items-center gap-4 shadow-[0_0_20px_rgba(255,255,255,0.2)]">
                     <div className="flex items-center gap-2 pr-4 border-r border-black/10">
                       <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
-                      <span className="text-[10px] font-black uppercase tracking-[0.2em]">Arc Testnet</span>
+                      <span className="text-[10px] font-black uppercase tracking-[0.2em]">Sepolia</span>
                     </div>
                     <div className="flex items-center gap-2">
                       <span className="font-mono text-[11px] font-bold tracking-tighter">
@@ -144,7 +145,7 @@ export default function Navbar() {
                   <div className="w-2.5 h-2.5 rounded-full bg-primary shadow-[0_0_12px_rgba(255,210,23,0.5)] animate-pulse"></div>
                   <div>
                     <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/40">Network Status</p>
-                    <p className="text-xs font-bold text-white uppercase">Arc Testnet ACTIVE</p>
+                    <p className="text-xs font-bold text-white uppercase">Sepolia ACTIVE</p>
                   </div>
                 </div>
                 <button 
@@ -168,7 +169,7 @@ export default function Navbar() {
                     <div className="flex-1 flex items-center justify-between">
                       <div>
                         <p className="font-mono text-lg font-bold tracking-tighter">{shortAddress}</p>
-                        <p className="text-[10px] font-black uppercase text-black/30 tracking-widest">Arc Testnet</p>
+                        <p className="text-[10px] font-black uppercase text-black/30 tracking-widest">Sepolia Testnet</p>
                       </div>
                       <button 
                         onClick={handleCopy} 
@@ -193,7 +194,7 @@ export default function Navbar() {
           </div>
 
           <p className="mt-20 text-center text-[9px] font-black uppercase tracking-widest text-white/10 italic">
-            emelSwap Protocol v4.0 Mobile Terminal
+            EmelBid Protocol v1.0 Terminal
           </p>
         </div>
       </div>

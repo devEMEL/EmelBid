@@ -13,7 +13,7 @@ export default function Footer() {
           <a href="#" className="hover:text-primary transition-colors">Discord</a>
         </div>
         <p className="text-white/20 text-[10px] font-black uppercase tracking-[0.4em]">
-          &copy; 2026 EmelSwap. All rights reserved.
+          &copy; 2026 EmelBid. All rights reserved.
         </p>
       </div>
     </footer>
