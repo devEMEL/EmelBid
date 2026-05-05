@@ -14,7 +14,8 @@ import { createInstance, SepoliaConfig } from '@zama-fhe/relayer-sdk/node';
 
 const RPC_URL = "https://ethereum-sepolia-rpc.publicnode.com";
 const PRIVATE_KEY = process.env.PRIVATE_KEY as `0x${string}`;
-const CONTRACT_ADDRESS = '0xba50b3EFC34ff586E4103fB93E34371a99aDfab7';
+const CONTRACT_ADDRESS = '0xCf8B3FEAb3d90fbA7DFfc92CDdE3984eE91A8516';
+
 
 const ABI = parseAbi([
   'function setPerson(bytes32 age, bytes32 height, bytes inputProof) external',

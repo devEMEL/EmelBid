@@ -77,7 +77,7 @@ export default function CreateAuctionPage() {
         <div className="space-y-6">
           <div className="flex flex-col gap-2">
             <h1 className="text-5xl font-black text-white tracking-tighter uppercase leading-none italic">New Auction</h1>
-            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/30">Select an asset from your vault to list on the encrypted marketplace.</p>
+            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/30">Select an asset to list on the encrypted marketplace.</p>
           </div>
 
           {/* Asset Type Tabs */}
@@ -193,11 +193,7 @@ export default function CreateAuctionPage() {
 
         {/* Right Side: Auction Parameters */}
         <div className="space-y-6">
-           <div className="flex flex-col gap-2 opacity-40">
-            <h2 className="text-3xl font-black text-white tracking-tighter uppercase leading-none italic">Parameters</h2>
-            <p className="text-[10px] font-black uppercase tracking-[0.2em]">Configuring Dutch decay curves via fhEVM.</p>
-          </div>
-
+           
           <div className="glass-morphism bg-white/[0.01] border border-white/5 p-8 space-y-6">
             <div className="space-y-4">
               <div className="flex justify-between items-center text-[10px] uppercase tracking-widest font-black">

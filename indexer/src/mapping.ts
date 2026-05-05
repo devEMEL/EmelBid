@@ -25,6 +25,8 @@ export function handleAuctionCreated(event: AuctionCreated): void {
   entity.expired = false
   entity.createdAtBlock = event.block.number
   entity.createdAtTimestamp = event.block.timestamp
+  entity.publicErc7984Amount = event.params.publicErc7984Amount
+  entity.transactionHash = event.transaction.hash
   entity.save()
 }
 
@@ -35,6 +37,7 @@ export function handleDecryptionRequested(event: DecryptionRequested): void {
   entity.requestId = event.params.requestId
   entity.timestamp = event.block.timestamp
   entity.blockNumber = event.block.number
+  entity.transactionHash = event.transaction.hash
   entity.save()
 }
 

@@ -14,6 +14,8 @@ type Auction @entity(immutable: false) {
   bids: [Bid!]! @derivedFrom(field: "auction")
   createdAtBlock: BigInt!
   createdAtTimestamp: BigInt!
+  publicErc7984Amount: BigInt!
+  transactionHash: Bytes!
 }
 
 type Bid @entity(immutable: false) {
@@ -24,4 +26,5 @@ type Bid @entity(immutable: false) {
   isWinning: Boolean
   timestamp: BigInt!
   blockNumber: BigInt!
+  transactionHash: Bytes!
 }

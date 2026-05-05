@@ -4,6 +4,7 @@ import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import HomePage from "@/app/page";
 import AuctionsPage from "@/app/auctions/page";
+import AuctionDetailsPage from "@/app/auctions/id/page";
 import ProfilePage from "@/app/profile/page";
 import ActivityPage from "@/app/activity/page";
 import AddTokenPage from "@/app/add-token/page";
@@ -35,6 +36,7 @@ export default function App() {
           <Route path="/" element={<HomePage />} />
           <Route path="/faucet" element={<FaucetPage />} />
           <Route path="/auctions" element={<AuctionsPage />} />
+          <Route path="/auctions/:id" element={<AuctionDetailsPage />} />
 
 
           {/* <Route path="/pools/create" element={<CreatePoolPage />} /> */}

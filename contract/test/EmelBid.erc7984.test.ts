@@ -47,6 +47,7 @@ describe("EmelBid — ERC7984 (Confidential) Auctions", function () {
       DURATION,
       2, // Confidential (AssetType.Confidential)
       mockERC7984Address,
+      CONFIDENTIAL_AMOUNT,
       CONFIDENTIAL_AMOUNT
     );
     const receipt = await tx.wait();

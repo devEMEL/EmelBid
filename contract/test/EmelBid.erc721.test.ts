@@ -47,7 +47,8 @@ describe("EmelBid — ERC721 Auctions", function () {
       DURATION,
       1, // ERC721
       mockERC721Address,
-      tokenId
+      tokenId,
+      0n
     );
     const receipt = await tx.wait();
     const event = receipt?.logs.find(l => { try { return emelBid.interface.parseLog(l)?.name === "AuctionCreated" } catch { return false } });

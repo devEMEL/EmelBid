@@ -124,7 +124,8 @@ export function useEmelBid() {
           BigInt(params.duration),                // duration
           params.assetType,                       // assetType
           params.asset,                           // asset
-          publicTokenIdOrAmount                   // tokenIdOrAmount
+          publicTokenIdOrAmount,                   // tokenIdOrAmount
+          BigInt(0)                               // publicErc7984Amount
         ],
       });
 
@@ -137,5 +138,59 @@ export function useEmelBid() {
     }
   };
 
-  return { createAuction };
+  const expireAuction = async (auctionId: string) => {
+    try {
+      if (!walletClient || !address) throw new Error("Wallet not connected");
+      toast.info("Expiring auction and withdrawing asset...");
+      const tx = await walletClient.writeContract({
+        address: CONTRACTS.EMEL_BID as `0x${string}`,
+        abi: EmelBidAbi.abi,
+        functionName: 'expireAuction',
+        args: [auctionId as `0x${string}`],
+      });
+      toast.success("Auction expired successfully!");
+      return tx;
+    } catch (error: any) {
+      console.error("Error expiring auction:", error);
+      toast.error(`Failed to expire auction: ${error.message || "Unknown error"}`);
+      throw error;
+    }
+  };
+
+  const withdrawProceeds = async (auctionId: string) => {
+    try {
+      if (!walletClient || !address) throw new Error("Wallet not connected");
+      toast.info("Withdrawing auction proceeds...");
+      const tx = await walletClient.writeContract({
+        address: CONTRACTS.EMEL_BID as `0x${string}`,
+        abi: EmelBidAbi.abi,
+        functionName: 'withdrawProceeds',
+        args: [auctionId as `0x${string}`],
+      });
+      toast.success("Proceeds withdrawn successfully!");
+      return tx;
+    } catch (error: any) {
+      console.error("Error withdrawing proceeds:", error);
+      toast.error(`Failed to withdraw proceeds: ${error.message || "Unknown error"}`);
+      throw error;
+    }
+  };
+
+  const getWinner = async (auctionId: string) => {
+    try {
+      if (!publicClient) return "0x0000000000000000000000000000000000000000";
+      const winner = await publicClient.readContract({
+        address: CONTRACTS.EMEL_BID as `0x${string}`,
+        abi: EmelBidAbi.abi,
+        functionName: 'getWinner',
+        args: [auctionId as `0x${string}`],
+      });
+      return winner as string;
+    } catch (error) {
+      console.error("Error getting winner:", error);
+      return "0x0000000000000000000000000000000000000000";
+    }
+  };
+
+  return { createAuction, expireAuction, withdrawProceeds, getWinner };
 }

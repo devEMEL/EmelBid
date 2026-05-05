@@ -8,7 +8,7 @@ dataSources:
     name: EmelBid
     network: sepolia
     source:
-      address: "0x8F59a23C864bd8235252cC89ed13B0c3eBcB481F"
+      address: "0xCf8B3FEAb3d90fbA7DFfc92CDdE3984eE91A8516"
       abi: EmelBid
       startBlock: 10000000
     mapping:
@@ -22,7 +22,7 @@ dataSources:
         - name: EmelBid
           file: ./abis/EmelBid.json
       eventHandlers:
-        - event: AuctionCreated(indexed bytes32,indexed address,address,uint8,uint256,uint256,uint256,uint256)
+        - event: AuctionCreated(indexed bytes32,indexed address,address,uint8,uint256,uint256,uint256,uint256,uint256)
           handler: handleAuctionCreated
         - event: AuctionSettled(indexed bytes32,address)
           handler: handleAuctionSettled

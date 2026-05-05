@@ -65,11 +65,22 @@ contract EmelBid is ReentrancyGuard, ZamaEthereumConfig, Ownable {
     mapping(address => mapping(bytes32 => euint64)) public userBid;
 
     uint256 public requestId;
+    uint256 public totalDecryptions;
     ICWETH public CWETH;
     address public decryptor;
 
     // EVENTS
-    event AuctionCreated(bytes32 indexed auctionId, address indexed seller);
+    event AuctionCreated(
+        bytes32 indexed auctionId, 
+        address indexed seller,
+        address asset,
+        AssetType assetType,
+        uint256 tokenIdOrAmount,
+        uint256 publicStartPrice,
+        uint256 duration,
+        uint256 startBlock,
+        uint256 publicErc7984Amount
+    );
     event DecryptionRequested(uint256 indexed requestId, bytes32 indexed auctionId, address bidder);
     event DecryptionFulfilled(uint256 indexed requestId, bool isWinning);
     event AuctionSettled(bytes32 indexed auctionId, address winner);
@@ -97,7 +108,8 @@ contract EmelBid is ReentrancyGuard, ZamaEthereumConfig, Ownable {
         uint256 duration,
         AssetType assetType,
         address asset,
-        uint256 tokenIdOrAmount
+        uint256 tokenIdOrAmount,
+        uint256 publicErc7984Amount
     ) external nonReentrant returns (bytes32 auctionId) {
         require(publicStartPrice > 0, "Invalid price");
         require(duration > 0, "Invalid duration");
@@ -156,7 +168,17 @@ contract EmelBid is ReentrancyGuard, ZamaEthereumConfig, Ownable {
             IERC20(asset).safeTransferFrom(msg.sender, address(this), tokenIdOrAmount);
         }
 
-        emit AuctionCreated(auctionId, msg.sender);
+        emit AuctionCreated(
+            auctionId, 
+            msg.sender, 
+            asset, 
+            assetType, 
+            auction.tokenIdOrAmount, 
+            publicStartPrice, 
+            duration, 
+            block.number,
+            publicErc7984Amount
+        );
     }
 
     function placeBid(bytes32 auctionId, externalEuint64 encBidExt, bytes calldata proof) external nonReentrant {
@@ -211,6 +233,7 @@ contract EmelBid is ReentrancyGuard, ZamaEthereumConfig, Ownable {
         bytes32 auctionId = req.auctionId;
 
         delete decryptionRequests[_requestId];
+        totalDecryptions++;
 
         AuctionConfig storage auction = auctions[auctionId];
 

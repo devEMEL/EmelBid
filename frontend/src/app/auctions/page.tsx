@@ -1,16 +1,26 @@
 
-
+import { useReadContract } from 'wagmi';
+import { CONTRACTS } from '@/lib/constants';
+import EmelBidAbi from '@/lib/abis/EmelBid.json';
 import { Link, useNavigate } from 'react-router-dom';
 import { Search, Plus, Loader2, ExternalLink, Timer, ShieldAlert, ImageIcon, Coins } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { formatUnits } from 'viem';
 import { fetchAuctions } from '@/lib/subgraph';
 
+import ListingImage from '@/components/ListingImage';
+
 export default function AuctionsPage() {
   const navigate = useNavigate();
   const [auctions, setAuctions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+
+  const { data: totalDecryptions } = useReadContract({
+    address: CONTRACTS.EMEL_BID as `0x${string}`,
+    abi: EmelBidAbi.abi,
+    functionName: 'totalDecryptions',
+  });
 
   useEffect(() => {
     async function getAuctions() {
@@ -62,17 +72,13 @@ export default function AuctionsPage() {
         </div>
         <div className="glass-morphism p-8 rounded-lg bg-white/[0.01]">
           <p className="text-[10px] font-black text-white/20 uppercase tracking-[0.2em] mb-4">Vol. Settled</p>
-          <h4 className="text-4xl font-black text-white tracking-tighter">{auctions.filter((a: any) => a.settled).length}</h4>
+          <h4 className="text-4xl font-black text-white tracking-tighter">
+            {totalDecryptions ? totalDecryptions.toString() : '0'}
+          </h4>
           <p className="text-tertiary-dim text-xs font-bold mt-2">Successful Decryptions</p>
         </div>
-        <div className="glass-morphism p-8 rounded-lg bg-white/[0.01]">
-          <p className="text-[10px] font-black text-white/20 uppercase tracking-[0.2em] mb-4">Privacy Level</p>
-          <h4 className="text-4xl font-black text-white tracking-tighter">MAX</h4>
-          <p className="text-tertiary-dim text-xs font-bold mt-2 italic flex items-center gap-2">
-            <ShieldAlert size={12} />
-            FHE Enabled
-          </p>
-        </div>
+
+
       </div>
 
       {/* Search Filter */}
@@ -100,15 +106,21 @@ export default function AuctionsPage() {
           filteredAuctions.map((auction) => (
             <div 
               key={auction.id} 
-              className="glass-morphism p-6 flex flex-col md:flex-row items-center justify-between gap-6 border-l-4 border-white/5 hover:border-primary transition-all group cursor-pointer"
+              onClick={() => navigate(`/auctions/${auction.id}`)}
+              className="glass-morphism p-6 flex flex-col md:flex-row items-center justify-between gap-6 border-l-4 border-white/5 hover:border-primary transition-all group cursor-pointer overflow-hidden"
             >
               <div className="flex items-center gap-8 w-full md:w-auto">
-                <div className="w-16 h-16 bg-white/5 border border-white/10 flex items-center justify-center shrink-0">
-                  {auction.assetType === 0 ? <ImageIcon className="text-primary/40" /> : <Coins className="text-primary/40" />}
-                </div>
+                <ListingImage 
+                  assetType={Number(auction.assetType)} 
+                  asset={auction.asset} 
+                  tokenIdOrAmount={auction.tokenIdOrAmount}
+                  className="w-20 h-20 shrink-0" 
+                />
                 <div className="space-y-1">
                   <div className="flex items-center gap-3">
-                    <span className="text-[10px] font-black text-white/20 uppercase tracking-widest italic">{auction.assetType === 0 ? "NFT" : auction.assetType === 1 ? "ERC20" : "ERC7984"} Listing</span>
+                    <span className="text-[10px] font-black text-white/20 uppercase tracking-widest italic">
+                      {Number(auction.assetType) === 1 ? "NFT" : Number(auction.assetType) === 0 ? "ERC20" : "ERC7984"} Listing
+                    </span>
                     <span className={`text-[8px] font-black uppercase px-2 py-0.5 rounded ${auction.settled ? 'bg-emerald-500/20 text-emerald-400' : 'bg-primary/20 text-primary animate-pulse'}`}>
                       {auction.settled ? 'Settled' : 'Active'}
                     </span>
@@ -117,7 +129,7 @@ export default function AuctionsPage() {
                     {auction.id.substring(0, 10)}...
                   </h3>
                   <div className="flex items-center gap-2 text-[9px] font-bold text-white/30 uppercase tracking-widest">
-                    <span className="truncate max-w-[120px]">{auction.asset}</span>
+                    <span className="truncate max-w-[200px]">{auction.asset}</span>
                     <ExternalLink size={10} />
                   </div>
                 </div>
@@ -126,13 +138,20 @@ export default function AuctionsPage() {
               <div className="grid grid-cols-3 gap-12 w-full md:w-auto text-right">
                 <div>
                    <p className="text-[9px] font-black text-white/20 uppercase tracking-widest mb-1">Start Price</p>
-                   <p className="text-lg font-black text-white tracking-tighter">{formatUnits(BigInt(auction.publicStartPrice), 18)} SOL</p>
+                   <p className="text-lg font-black text-white tracking-tighter">{formatUnits(BigInt(auction.publicStartPrice), 6)} CWETH</p>
                 </div>
                 <div>
                    <p className="text-[9px] font-black text-white/20 uppercase tracking-widest mb-1">Duration</p>
-                   <div className="flex items-center justify-end gap-2">
-                     <Timer size={12} className="text-primary/40" />
-                     <p className="text-lg font-black text-white tracking-tighter">{auction.duration} BLKS</p>
+                   <div className="flex flex-col items-end gap-0.5">
+                     <div className="flex items-center justify-end gap-2">
+                       <Timer size={12} className="text-primary/40" />
+                       <p className="text-lg font-black text-white tracking-tighter">{auction.duration} BLKS</p>
+                     </div>
+                     <p className="text-[9px] font-bold text-white/40 uppercase tracking-widest leading-none">
+                       ~{Number(auction.duration) * 12 >= 3600 
+                         ? `${(Number(auction.duration) * 12 / 3600).toFixed(1)} hrs` 
+                         : `${Math.round(Number(auction.duration) * 12 / 60)} mins`}
+                     </p>
                    </div>
                 </div>
                 <div className="flex flex-col items-end justify-center">

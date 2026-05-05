@@ -10,6 +10,7 @@
   --color-tertiary-dim: #d2e45c;
   
   --font-outfit: "Outfit", sans-serif;
+  --font-raleway: "Raleway", sans-serif;
   --radius-sm: 0px;
   --radius-md: 0px;
   --radius-lg: 0px;
@@ -28,7 +29,7 @@
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: var(--font-outfit);
+  font-family: var(--font-raleway);
   -webkit-font-smoothing: antialiased;
 }
 

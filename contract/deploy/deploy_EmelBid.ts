@@ -28,4 +28,4 @@ func.dependencies = ["dependencies"];
 
 // npx hardhat deploy --tags EmelBid --network sepolia --reset
 
-// EmelBid deployed at: 0x8F59a23C864bd8235252cC89ed13B0c3eBcB481F
+// EmelBid deployed at: 0xCf8B3FEAb3d90fbA7DFfc92CDdE3984eE91A8516

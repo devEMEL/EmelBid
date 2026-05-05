@@ -43,7 +43,8 @@ describe("EmelBid — ERC20 Auctions", function () {
       DURATION,
       0, // ERC20
       mockERC20Address,
-      ERC20_AMOUNT
+      ERC20_AMOUNT,
+      0n
     );
     const receipt = await tx.wait();
     const event = receipt?.logs.find((log: any) => {
