@@ -8,6 +8,7 @@ import { fetchUserAuctions } from '@/lib/subgraph';
 import { useFhe } from '@/components/FheProvider';
 import ListingImage from '@/components/ListingImage';
 import { Network, Alchemy } from 'alchemy-sdk';
+import { toast } from 'react-toastify';
 
 const alchemy = new Alchemy({
   apiKey: "TajhoIdNGy7RFjvAjEMca",
@@ -153,10 +154,15 @@ export default function ProfilePage() {
             <div className="w-10 h-10 rounded-full bg-gradient-to-r from-primary to-emerald-500 p-0.5">
                 <div className="w-full h-full bg-black rounded-full" />
             </div>
-            <h1 className="text-xl font-black tracking-widest text-white uppercase font-mono">
-                {address.substring(0, 6)}...{address.substring(address.length - 4)}
-            </h1>
-            <Copy size={14} className="text-white/20 hover:text-white cursor-pointer transition-colors" />
+            <div 
+                className="flex items-center gap-3 cursor-pointer group/copy" 
+                onClick={() => { navigator.clipboard.writeText(address); toast.success("Address copied!"); }}
+            >
+                <h1 className="text-xl font-black tracking-widest text-white uppercase font-mono group-hover/copy:text-primary transition-colors">
+                    {address.substring(0, 6)}...{address.substring(address.length - 4)}
+                </h1>
+                <Copy size={14} className="text-white/20 group-hover/copy:text-primary transition-colors" />
+            </div>
         </div>
       </section>
 
@@ -204,7 +210,14 @@ export default function ProfilePage() {
                           NBL Token
                           <span className="bg-white/10 text-white/50 text-[9px] font-black px-2 py-0.5 rounded uppercase tracking-tighter">Public</span>
                       </h3>
-                      <p className="text-white/40 text-[10px] font-black tracking-[0.2em] uppercase mt-1">ERC20</p>
+                      <div className="flex items-center gap-2 mt-1">
+                        <p className="text-white/40 text-[10px] font-black tracking-[0.2em] uppercase">ERC20</p>
+                        <span className="text-white/20 text-[10px]">|</span>
+                        <p className="text-white/40 text-[10px] font-mono hover:text-primary transition-colors cursor-pointer flex items-center gap-1" onClick={() => { navigator.clipboard.writeText(CONTRACTS.NBL); toast.success("Contract copied!"); }}>
+                            {CONTRACTS.NBL.substring(0,6)}...{CONTRACTS.NBL.substring(38)}
+                            <Copy size={10} />
+                        </p>
+                      </div>
                     </div>
                   </div>
                   <div className="text-right">
@@ -226,7 +239,14 @@ export default function ProfilePage() {
                           Confidential WETH
                           <span className="bg-primary/20 text-primary text-[9px] font-black px-2 py-0.5 rounded uppercase tracking-tighter flex items-center gap-1"><Lock size={10} /> FHE Encrypted</span>
                       </h3>
-                      <p className="text-white/40 text-[10px] font-black tracking-[0.2em] uppercase mt-1">CWETH</p>
+                      <div className="flex items-center gap-2 mt-1">
+                        <p className="text-white/40 text-[10px] font-black tracking-[0.2em] uppercase">CWETH</p>
+                        <span className="text-white/20 text-[10px]">|</span>
+                        <p className="text-white/40 text-[10px] font-mono hover:text-primary transition-colors cursor-pointer flex items-center gap-1" onClick={() => { navigator.clipboard.writeText(CONTRACTS.CWETH); toast.success("Contract copied!"); }}>
+                            {CONTRACTS.CWETH.substring(0,6)}...{CONTRACTS.CWETH.substring(38)}
+                            <Copy size={10} />
+                        </p>
+                      </div>
                     </div>
                   </div>
                   <div className="text-right flex items-center gap-6 justify-end">
@@ -254,7 +274,14 @@ export default function ProfilePage() {
                           Emel Confidential Token
                           <span className="bg-primary/20 text-primary text-[9px] font-black px-2 py-0.5 rounded uppercase tracking-tighter flex items-center gap-1"><Lock size={10} /> FHE Encrypted</span>
                       </h3>
-                      <p className="text-white/40 text-[10px] font-black tracking-[0.2em] uppercase mt-1">MockERC7984</p>
+                      <div className="flex items-center gap-2 mt-1">
+                        <p className="text-white/40 text-[10px] font-black tracking-[0.2em] uppercase">MockERC7984</p>
+                        <span className="text-white/20 text-[10px]">|</span>
+                        <p className="text-white/40 text-[10px] font-mono hover:text-primary transition-colors cursor-pointer flex items-center gap-1" onClick={() => { navigator.clipboard.writeText(CONTRACTS.MOCK_ERC7984); toast.success("Contract copied!"); }}>
+                            {CONTRACTS.MOCK_ERC7984.substring(0,6)}...{CONTRACTS.MOCK_ERC7984.substring(38)}
+                            <Copy size={10} />
+                        </p>
+                      </div>
                     </div>
                   </div>
                   <div className="text-right flex items-center gap-6 justify-end">

@@ -45,7 +45,7 @@ export default function AuctionsPage() {
       <header className="flex flex-col md:flex-row justify-between items-start md:items-end gap-8 mb-12">
         <div className="space-y-4">
           <div className="flex items-center gap-4">
-            <h1 className="text-5xl font-black tracking-tighter text-white uppercase italic leading-none">
+            <h1 className="text-3xl font-black tracking-tighter text-white uppercase leading-none">
               Live Auctions
             </h1>
             <div className="px-3 py-1 bg-white/5 border border-white/10 rounded-full flex items-center gap-2">

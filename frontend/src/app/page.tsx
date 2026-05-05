@@ -25,10 +25,10 @@ export default function CreateAuctionPage() {
   const [loading, setLoading] = useState(false);
   
   // Auction Params
-  const [startPrice, setStartPrice] = useState('100');
-  const [encStartPrice, setEncStartPrice] = useState('100');
-  const [decayRate, setDecayRate] = useState('1');
-  const [reservePrice, setReservePrice] = useState('50');
+  const [startPrice, setStartPrice] = useState('0.01');
+  const [encStartPrice, setEncStartPrice] = useState('0.03');
+  const [decayRate, setDecayRate] = useState('20');
+  const [reservePrice, setReservePrice] = useState('0.01');
   const [duration, setDuration] = useState('3600');
 
   const assetTypes = [
@@ -76,7 +76,7 @@ export default function CreateAuctionPage() {
         {/* Left Side: Asset Selection */}
         <div className="space-y-6">
           <div className="flex flex-col gap-2">
-            <h1 className="text-5xl font-black text-white tracking-tighter uppercase leading-none italic">New Auction</h1>
+            <h1 className="text-3xl font-black text-white tracking-tighter uppercase leading-none">New Auction</h1>
             <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/30">Select an asset to list on the encrypted marketplace.</p>
           </div>
 
@@ -294,7 +294,7 @@ export default function CreateAuctionPage() {
               disabled={loading || !contractAddress || !amountOrId}
               className="w-full bg-primary text-black font-black tracking-[0.2em] uppercase py-6 text-[10px] shadow-[0_0_30px_rgba(255,210,23,0.15)] hover:bg-white transition-all flex items-center justify-center gap-3 mt-4 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {loading ? <Loader2 size={14} className="animate-spin" /> : "Initialize Dutch Auction"}
+              {loading ? <Loader2 size={14} className="animate-spin" /> : "Create Dutch Auction"}
               <ChevronRight size={14} />
             </button>
           </div>

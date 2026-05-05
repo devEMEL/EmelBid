@@ -190,7 +190,7 @@ export default function FaucetPage() {
       <div className="fixed bottom-1/4 -left-20 w-80 h-80 bg-primary/5 rounded-full blur-[100px] pointer-events-none"></div>
 
       <header className="mb-16 space-y-4">
-        <h1 className="text-6xl font-black text-white tracking-tighter uppercase italic leading-none">
+        <h1 className="text-3xl font-black text-white tracking-tighter uppercase leading-none">
           Market Faucet
         </h1>
         <p className="text-[10px] font-black uppercase tracking-[0.3em] text-white/30 max-w-xl">

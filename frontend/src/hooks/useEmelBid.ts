@@ -37,6 +37,10 @@ export function useEmelBid() {
       // 1. Encryption
       toast.info("Encrypting auction parameters...");
       console.log("Encrypting auction parameters...");
+      
+      // Yield thread to allow React to render the toast before WASM blocks it
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
       const encryptedInput = await fhe
         .createEncryptedInput(CONTRACTS.EMEL_BID, address)
         .add64(parseUnits(params.encStartPrice, 6))    // encStartPrice (cWETH = 6 dec)
@@ -138,6 +142,61 @@ export function useEmelBid() {
     }
   };
 
+  const placeBid = async (auctionId: string, bidAmount: string) => {
+    try {
+      if (!walletClient || !address) throw new Error("Wallet not connected");
+      if (!fhe) throw new Error("FHE instance not initialized");
+
+      toast.info("Encrypting bid amount...");
+      
+      // Yield thread to allow React to render the toast before WASM blocks it
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      // 1. Encryption
+      const encryptedInput = await fhe
+        .createEncryptedInput(CONTRACTS.EMEL_BID, address)
+        .add64(parseUnits(bidAmount, 6)) // CWETH has 6 decimals
+        .encrypt();
+
+      const encBidExtHandle = uint8ArrayToHex(encryptedInput.handles[0]);
+      const inputProof = uint8ArrayToHex(encryptedInput.inputProof as unknown as Uint8Array);
+
+      // 2. Approval
+      toast.info("Approving CWETH...");
+      const approveTx = await walletClient.writeContract({
+        address: CONTRACTS.CWETH as `0x${string}`,
+        abi: MockERC7984Abi.abi,
+        functionName: 'approve',
+        args: [CONTRACTS.EMEL_BID, parseUnits(bidAmount, 6)],
+      });
+      
+      if (publicClient) {
+        toast.info("Waiting for approval confirmation...");
+        await publicClient.waitForTransactionReceipt({ hash: approveTx });
+      }
+
+      // 3. Place Bid
+      toast.info("Placing Encrypted Bid...");
+      const tx = await walletClient.writeContract({
+        address: CONTRACTS.EMEL_BID as `0x${string}`,
+        abi: EmelBidAbi.abi,
+        functionName: 'placeBid',
+        args: [
+          auctionId as `0x${string}`,
+          encBidExtHandle,
+          inputProof
+        ],
+      });
+
+      toast.success("Bid placed successfully!");
+      return tx;
+    } catch (error: any) {
+      console.error("Error placing bid:", error);
+      toast.error(`Failed to place bid: ${error.message || "Unknown error"}`);
+      throw error;
+    }
+  };
+
   const expireAuction = async (auctionId: string) => {
     try {
       if (!walletClient || !address) throw new Error("Wallet not connected");
@@ -182,7 +241,7 @@ export function useEmelBid() {
       const winner = await publicClient.readContract({
         address: CONTRACTS.EMEL_BID as `0x${string}`,
         abi: EmelBidAbi.abi,
-        functionName: 'getWinner',
+        functionName: 'auctionWinner',
         args: [auctionId as `0x${string}`],
       });
       return winner as string;
@@ -192,5 +251,5 @@ export function useEmelBid() {
     }
   };
 
-  return { createAuction, expireAuction, withdrawProceeds, getWinner };
+  return { createAuction, placeBid, expireAuction, withdrawProceeds, getWinner };
 }

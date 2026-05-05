@@ -8,20 +8,23 @@ import {
 } from 'lucide-react';
 import { formatUnits } from 'viem';
 import { fetchAuctionById } from '@/lib/subgraph';
-import ListingImage from '@/components/ListingImage';
 import { useEmelBid } from '@/hooks/useEmelBid';
+import ListingImage from '@/components/ListingImage';
 
 export default function AuctionDetailsPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { address } = useAccount();
   const publicClient = usePublicClient();
-  const { expireAuction, withdrawProceeds, getWinner } = useEmelBid();
+  const { placeBid, expireAuction, withdrawProceeds, getWinner } = useEmelBid();
   
   const [auction, setAuction] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [currentBlock, setCurrentBlock] = useState<bigint>(0n);
-  const [winner, setWinner] = useState<string>("0x0000000000000000000000000000000000000000");
+  const [winner, setWinner] = useState<string>("pending");
+  const [bidAmount, setBidAmount] = useState('0.01');
+  const [bidding, setBidding] = useState(false);
+  const [checkingWinner, setCheckingWinner] = useState(false);
 
   useEffect(() => {
     async function getAuction() {
@@ -33,11 +36,6 @@ export default function AuctionDetailsPage() {
       if (publicClient) {
         const block = await publicClient.getBlockNumber();
         setCurrentBlock(block);
-      }
-
-      if (data?.settled) {
-        const w = await getWinner(id);
-        setWinner(w);
       }
     }
     getAuction();
@@ -57,6 +55,30 @@ export default function AuctionDetailsPage() {
     // Refresh data
     const data = await fetchAuctionById(id);
     setAuction(data);
+  };
+
+  const handlePlaceBid = async () => {
+     if (!id || !bidAmount) return;
+     setBidding(true);
+     try {
+       await placeBid(id, bidAmount);
+       setBidAmount('0');
+     } catch (e) {
+       console.error(e);
+     }
+     setBidding(false);
+  };
+
+  const handleRevealWinner = async () => {
+    if (!id) return;
+    setCheckingWinner(true);
+    try {
+      const w = await getWinner(id);
+      setWinner(w || "0x0000000000000000000000000000000000000000");
+    } catch (e) {
+      console.error(e);
+    }
+    setCheckingWinner(false);
   };
 
   if (loading) {
@@ -84,7 +106,7 @@ export default function AuctionDetailsPage() {
   }
 
   const isExpired = !auction.settled && currentBlock > BigInt(auction.startBlock) + BigInt(auction.duration);
-  const canWithdraw = auction.settled && winner !== "0x0000000000000000000000000000000000000000" && auction.seller.toLowerCase() === address?.toLowerCase();
+  const canWithdraw = auction.settled && winner !== "0x0000000000000000000000000000000000000000" && winner !== "pending" && auction.seller.toLowerCase() === address?.toLowerCase();
 
   return (
     <div className="pt-8 pb-40 px-6 max-w-6xl mx-auto relative">
@@ -131,7 +153,7 @@ export default function AuctionDetailsPage() {
                 Encrypted with FHE
               </span>
             </div>
-            <h1 className="text-6xl font-black text-white tracking-tighter uppercase leading-none mb-6">
+            <h1 className="text-3xl font-black text-white tracking-tighter uppercase leading-none mb-6">
                Auction Details
             </h1>
             <p className="text-white/40 text-sm leading-relaxed uppercase tracking-widest font-bold max-w-xl">
@@ -213,26 +235,55 @@ export default function AuctionDetailsPage() {
               </div>
             </div>
             
-            {auction.settled && winner !== "0x0000000000000000000000000000000000000000" && (
-              <div className="p-6 flex flex-col md:flex-row md:items-center justify-between gap-4 bg-emerald-500/[0.02]">
-                <div className="flex items-center gap-4">
-                  <CheckCircle2 size={16} className="text-emerald-400" />
-                  <div>
-                    <p className="text-[9px] font-black text-emerald-400/40 uppercase tracking-widest">Auction Winner</p>
-                    <p className="text-xs font-mono text-emerald-400">{winner}</p>
-                  </div>
+            <div className={`p-6 flex flex-col md:flex-row md:items-center justify-between gap-4 ${winner !== "0x0000000000000000000000000000000000000000" && winner !== "pending" ? "bg-emerald-500/[0.02]" : "bg-white/[0.01]"}`}>
+              <div className="flex items-center gap-4">
+                <CheckCircle2 size={16} className={winner !== "0x0000000000000000000000000000000000000000" && winner !== "pending" ? "text-emerald-400" : "text-white/20"} />
+                <div>
+                  <p className={`text-[9px] font-black uppercase tracking-widest ${winner !== "0x0000000000000000000000000000000000000000" && winner !== "pending" ? "text-emerald-400/40" : "text-white/20"}`}>Auction Winner</p>
+                  {winner === "pending" ? (
+                      <p className="text-xs font-mono text-white/40 mt-1">Pending Check</p>
+                  ) : (
+                      <p className="text-xs font-mono mt-1 text-emerald-400">{winner}</p>
+                  )}
                 </div>
               </div>
-            )}
+              <button 
+                onClick={handleRevealWinner}
+                disabled={checkingWinner}
+                className="p-2 px-6 bg-white/5 hover:bg-white/10 text-white transition-colors uppercase tracking-[0.2em] font-black text-[9px] border border-white/10 cursor-pointer disabled:opacity-50"
+              >
+                {checkingWinner ? 'Checking...' : 'Check Winner'}
+              </button>
+            </div>
           </div>
 
           {/* Action Button */}
           <div className="pt-4 space-y-4">
             {!auction.settled && !isExpired ? (
-               <button className="w-full bg-primary text-black py-6 rounded-none font-black text-xs uppercase tracking-[0.4em] gold-glow hover:brightness-110 active:scale-[0.99] transition-all flex items-center justify-center gap-4">
-                  <Gem size={18} />
-                  Place Encrypted Bid
-               </button>
+               <div className="space-y-4">
+                 <div className="flex gap-4">
+                   <div className="flex-1 glass-morphism bg-white/[0.02] p-2 relative flex items-center border border-white/10 focus-within:border-primary/50 transition-colors">
+                     <span className="absolute left-4 text-[10px] font-black uppercase text-white/40 tracking-widest">Amount</span>
+                     <input 
+                        type="number" 
+                        value={bidAmount}
+                        onChange={(e) => setBidAmount(e.target.value)}
+                        className="w-full bg-transparent border-none text-right text-xl font-black text-white focus:outline-none focus:ring-0 px-4"
+                        placeholder="0.00"
+                        step="0.01"
+                     />
+                     <span className="text-[10px] font-black uppercase text-primary tracking-widest pr-4">CWETH</span>
+                   </div>
+                 </div>
+                 <button 
+                  onClick={handlePlaceBid} 
+                  disabled={bidding || !bidAmount || Number(bidAmount) <= 0} 
+                  className="w-full bg-primary text-black py-6 rounded-none font-black text-xs uppercase tracking-[0.4em] gold-glow hover:brightness-110 active:scale-[0.99] transition-all flex items-center justify-center gap-4 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                    {bidding ? <div className="w-4 h-4 border-t-2 border-black rounded-full animate-spin"></div> : <Gem size={18} />}
+                    {bidding ? 'Placing Bid...' : 'Place Encrypted Bid'}
+                 </button>
+               </div>
             ) : isExpired ? (
               <div className="flex flex-col md:flex-row items-center gap-6">
                 <button 
