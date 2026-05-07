@@ -11,7 +11,8 @@ import { sepolia } from 'viem/chains';
 import { createInstance, SepoliaConfig } from '@zama-fhe/relayer-sdk/node';
 
 
-
+// const RPC_URL = "https://sepolia.gateway.tenderly.co";
+// const RPC_URL = "https://sepolia.drpc.org";
 const RPC_URL = "https://ethereum-sepolia-rpc.publicnode.com";
 const PRIVATE_KEY = process.env.PRIVATE_KEY as `0x${string}`;
 const CONTRACT_ADDRESS = '0xCf8B3FEAb3d90fbA7DFfc92CDdE3984eE91A8516';

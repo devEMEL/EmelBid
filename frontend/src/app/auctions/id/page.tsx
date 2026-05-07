@@ -2,9 +2,9 @@ import { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { usePublicClient, useAccount } from 'wagmi';
 import { 
-  ArrowLeft, ExternalLink, Timer, ShieldAlert, ImageIcon, 
+  ArrowLeft, ExternalLink, Timer, ImageIcon, 
   Coins, User, Hash, Clock, CheckCircle2, AlertCircle,
-  Gem, Wallet, Zap, ShieldCheck, Flame, Download
+  Gem, Wallet, Zap, ShieldCheck, Flame, Download, Eye, Trophy
 } from 'lucide-react';
 import { formatUnits } from 'viem';
 import { fetchAuctionById } from '@/lib/subgraph';
@@ -16,7 +16,7 @@ export default function AuctionDetailsPage() {
   const navigate = useNavigate();
   const { address } = useAccount();
   const publicClient = usePublicClient();
-  const { placeBid, expireAuction, withdrawProceeds, getWinner } = useEmelBid();
+  const { placeBid, expireAuction, withdrawProceeds, getWinner, getWinningBidDetails } = useEmelBid();
   
   const [auction, setAuction] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -25,6 +25,8 @@ export default function AuctionDetailsPage() {
   const [bidAmount, setBidAmount] = useState('0.01');
   const [bidding, setBidding] = useState(false);
   const [checkingWinner, setCheckingWinner] = useState(false);
+  const [winningBid, setWinningBid] = useState<any>(null);
+  const [revealingBid, setRevealingBid] = useState(false);
 
   useEffect(() => {
     async function getAuction() {
@@ -79,6 +81,21 @@ export default function AuctionDetailsPage() {
       console.error(e);
     }
     setCheckingWinner(false);
+  };
+
+  const handleRevealWinningBid = async () => {
+    if (!id) return;
+    setRevealingBid(true);
+    try {
+      const details = await getWinningBidDetails(id);
+      if (details) {
+        setWinningBid(details.bidAmount);
+        setWinner(details.bidder);
+      }
+    } catch (e) {
+      console.error(e);
+    }
+    setRevealingBid(false);
   };
 
   if (loading) {
@@ -247,14 +264,53 @@ export default function AuctionDetailsPage() {
                   )}
                 </div>
               </div>
-              <button 
-                onClick={handleRevealWinner}
-                disabled={checkingWinner}
-                className="p-2 px-6 bg-white/5 hover:bg-white/10 text-white transition-colors uppercase tracking-[0.2em] font-black text-[9px] border border-white/10 cursor-pointer disabled:opacity-50"
-              >
-                {checkingWinner ? 'Checking...' : 'Check Winner'}
-              </button>
+              <div className="flex gap-2">
+                <button 
+                  onClick={handleRevealWinner}
+                  disabled={checkingWinner}
+                  className="p-2 px-6 bg-white/5 hover:bg-white/10 text-white transition-colors uppercase tracking-[0.2em] font-black text-[9px] border border-white/10 cursor-pointer disabled:opacity-50"
+                >
+                  {checkingWinner ? 'Checking...' : 'Check Winner'}
+                </button>
+                <button 
+                  onClick={handleRevealWinningBid}
+                  disabled={revealingBid}
+                  className="p-2 px-6 bg-primary/10 hover:bg-primary/20 text-primary transition-colors uppercase tracking-[0.2em] font-black text-[9px] border border-primary/30 cursor-pointer disabled:opacity-50 flex items-center gap-2"
+                >
+                  <Eye size={12} />
+                  {revealingBid ? 'Decrypting...' : 'Reveal Winning Bid'}
+                </button>
+              </div>
             </div>
+
+            {/* Decrypted Winning Bid Details */}
+            {winningBid && (
+              <div className="p-6 bg-gradient-to-r from-primary/[0.04] to-emerald-500/[0.04] border-t border-primary/10">
+                <div className="flex items-center gap-2 mb-5">
+                  <Trophy size={14} className="text-primary" />
+                  <span className="text-[10px] font-black uppercase tracking-widest text-primary/80">Decrypted Auction Result</span>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="bg-black/20 p-4 border border-white/5">
+                    <p className="text-[9px] font-black text-white/30 uppercase tracking-widest mb-2">Winner</p>
+                    <p className="text-xs font-mono text-emerald-400 break-all">{winningBid.bidder}</p>
+                  </div>
+                  <div className="bg-black/20 p-4 border border-white/5">
+                    <p className="text-[9px] font-black text-white/30 uppercase tracking-widest mb-2">Winning Bid</p>
+                    <p className="text-xl font-black text-white tracking-tighter">
+                      {formatUnits(BigInt(winningBid.bidAmount?.toString() || '0'), 6)}
+                      <span className="text-xs text-primary ml-2">CWETH</span>
+                    </p>
+                  </div>
+                  <div className="bg-black/20 p-4 border border-white/5">
+                    <p className="text-[9px] font-black text-white/30 uppercase tracking-widest mb-2">Is Winning</p>
+                    <p className={`text-sm font-black uppercase ${winningBid.isWinning ? 'text-emerald-400' : 'text-red-400'}`}>
+                      {winningBid.isWinning ? '✓ Verified Winner' : '✗ Not Winning'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Action Button */}
@@ -316,10 +372,7 @@ export default function AuctionDetailsPage() {
               </div>
             )}
             
-            <p className="text-[9px] text-white/20 font-black uppercase tracking-widest text-center mt-6 flex items-center justify-center gap-2">
-              <ShieldAlert size={12} />
-              All bids are encrypted via FHE Protocol v1.0
-            </p>
+            
           </div>
         </div>
 

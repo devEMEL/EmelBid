@@ -10,19 +10,18 @@ import { privateKeyToAccount } from 'viem/accounts';
 import { sepolia } from 'viem/chains';
 import { createInstance, SepoliaConfig } from '@zama-fhe/relayer-sdk/node';
 
-const RPC_URL = "https://ethereum-sepolia-rpc.publicnode.com";
+const RPC_URL = "https://sepolia.gateway.tenderly.co";
 const PRIVATE_KEY = process.env.PRIVATE_KEY;
 const CONTRACT_ADDRESS = '0xCf8B3FEAb3d90fbA7DFfc92CDdE3984eE91A8516';
 
 const ABI = parseAbi([
-  'event DecryptionRequested(uint256 requestId, bytes32 age, bytes32 height)',
-  'function fulfillDecryption(uint256 requestId, uint32 decryptedAge, uint32 decryptedHeight) external',
-  'function getPerson(address user) external view returns (bytes32,bytes32,uint32,uint32)',
-  'function getPersonByRequestId(uint256 _requestId) external view returns (address)'
+  'event DecryptionRequested(uint256 indexed requestId, bytes32 indexed auctionId, address bidder)',
+  'function fulfillDecryption(uint256 requestId, bool isWinning) external',
+  'function decryptionRequests(uint256) external view returns (bytes32 isWinning, address bidder, bytes32 bidAmount, bytes32 auctionId)'
 ]);
 
 async function main() {
-  console.log('--- Dutch Auction Bot ---');
+  console.log('--- EmelBid Solver Bot ---');
 
   if (!PRIVATE_KEY) {
     console.error('PRIVATE_KEY not found in .env');
@@ -68,12 +67,12 @@ async function main() {
           type: 'event',
           name: 'DecryptionRequested',
           inputs: [
-            { name: 'requestId', type: 'uint256', indexed: false },
-            { name: 'age', type: 'bytes32', indexed: false },
-            { name: 'height', type: 'bytes32', indexed: false },
+            { name: 'requestId', type: 'uint256', indexed: true },
+            { name: 'auctionId', type: 'bytes32', indexed: true },
+            { name: 'bidder', type: 'address', indexed: false },
           ],
         },
-        fromBlock: lastBlock + 1n, // ✅ FIX
+        fromBlock: lastBlock + 1n,
         toBlock: currentBlock,
       });
 
@@ -99,16 +98,20 @@ async function main() {
         console.log(`\n[EVENT] Request ID: ${requestId}`);
 
         try {
-          const ageHex = (log.args as any).age as `0x${string}`;
-          const heightHex = (log.args as any).height as `0x${string}`;
+          // Fetch the decryption request from the contract
+          const [isWinningHandle] = await publicClient.readContract({
+            address: CONTRACT_ADDRESS,
+            abi: ABI,
+            functionName: 'decryptionRequests',
+            args: [requestId],
+          });
 
-          console.log('Handles:', ageHex, heightHex);
+          console.log('Handle for isWinning:', isWinningHandle);
 
           const keypair = instance.generateKeypair();
 
           const handleContractPairs = [
-            { handle: ageHex, contractAddress: CONTRACT_ADDRESS },
-            { handle: heightHex, contractAddress: CONTRACT_ADDRESS },
+            { handle: isWinningHandle, contractAddress: CONTRACT_ADDRESS },
           ];
 
           const startTimeStamp = Math.floor(Date.now() / 1000);
@@ -148,21 +151,20 @@ async function main() {
 
           console.log('Raw decrypt results:', results);
 
-          if (!results[ageHex] || !results[heightHex]) {
+          if (results[isWinningHandle] === undefined) {
             console.error('Decryption failed');
             continue;
           }
 
-          const decryptedAge = Number(results[ageHex]);
-          const decryptedHeight = Number(results[heightHex]);
+          const decryptedIsWinning = results[isWinningHandle] === 1n || results[isWinningHandle] === true;
 
-          console.log(`[DATA] Decrypted: Age=${decryptedAge}, Height=${decryptedHeight}`);
+          console.log(`[DATA] Decrypted: isWinning=${decryptedIsWinning}`);
 
           const hash = await walletClient.writeContract({
             address: CONTRACT_ADDRESS,
             abi: ABI,
             functionName: 'fulfillDecryption',
-            args: [requestId, decryptedAge, decryptedHeight],
+            args: [requestId, decryptedIsWinning],
           });
 
           console.log(`[SUCCESS] TX: ${hash}`);

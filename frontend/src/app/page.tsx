@@ -33,7 +33,7 @@ export default function CreateAuctionPage() {
 
   const assetTypes = [
     { id: 'nft', label: 'NFT (ERC721)', icon: ImageIcon, desc: 'Unique Digital Collectibles' },
-    { id: 'erc20', label: 'Tokens (ERC20)', icon: Coins, desc: 'Fungible Digital Assets' },
+    { id: 'erc20', label: 'ERC20', icon: Coins, desc: 'Fungible Digital Assets' },
     { id: 'erc7984', label: 'Private (ERC7984)', icon: ShieldCheck, desc: 'Confidential Shared Assets' },
   ];
 

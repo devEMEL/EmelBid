@@ -1,5 +1,6 @@
 import { useWalletClient, useAccount, usePublicClient } from 'wagmi';
 import { CONTRACTS } from '@/lib/constants';
+import CWETHAbi from '@/lib/abis/CWETH.json';
 import EmelBidAbi from '@/lib/abis/EmelBid.json';
 import MockERC20Abi from '@/lib/abis/MockERC20.json';
 import MockERC721Abi from '@/lib/abis/MockERC721.json';
@@ -37,10 +38,10 @@ export function useEmelBid() {
       // 1. Encryption
       toast.info("Encrypting auction parameters...");
       console.log("Encrypting auction parameters...");
-      
+
       // Yield thread to allow React to render the toast before WASM blocks it
       await new Promise(resolve => setTimeout(resolve, 100));
-      
+
       const encryptedInput = await fhe
         .createEncryptedInput(CONTRACTS.EMEL_BID, address)
         .add64(parseUnits(params.encStartPrice, 6))    // encStartPrice (cWETH = 6 dec)
@@ -80,7 +81,7 @@ export function useEmelBid() {
         args: [CONTRACTS.EMEL_BID, approvalAmount],
       });
       console.log("Approval TX:", approveTx);
-      
+
       if (publicClient) {
         toast.info("Waiting for approval confirmation...");
         await publicClient.waitForTransactionReceipt({ hash: approveTx });
@@ -99,9 +100,9 @@ export function useEmelBid() {
         encReserveHandle,
         encAmountExtHandle
       ] = handles;
-      
 
- console.log("Auction Parameters:", {
+
+      console.log("Auction Parameters:", {
         publicStartPrice: parseUnits(params.publicStartPrice, 6),
         encStartPriceHandle,
         encDecayRateHandle,
@@ -148,10 +149,10 @@ export function useEmelBid() {
       if (!fhe) throw new Error("FHE instance not initialized");
 
       toast.info("Encrypting bid amount...");
-      
+
       // Yield thread to allow React to render the toast before WASM blocks it
       await new Promise(resolve => setTimeout(resolve, 100));
-      
+
       // 1. Encryption
       const encryptedInput = await fhe
         .createEncryptedInput(CONTRACTS.EMEL_BID, address)
@@ -161,15 +162,17 @@ export function useEmelBid() {
       const encBidExtHandle = uint8ArrayToHex(encryptedInput.handles[0]);
       const inputProof = uint8ArrayToHex(encryptedInput.inputProof as unknown as Uint8Array);
 
+      const until = BigInt(Math.floor(Date.now() / 1000) + 3000);
+
       // 2. Approval
       toast.info("Approving CWETH...");
       const approveTx = await walletClient.writeContract({
         address: CONTRACTS.CWETH as `0x${string}`,
-        abi: MockERC7984Abi.abi,
-        functionName: 'approve',
-        args: [CONTRACTS.EMEL_BID, parseUnits(bidAmount, 6)],
+        abi: CWETHAbi.abi,
+        functionName: 'setOperator',
+        args: [CONTRACTS.EMEL_BID, until],
       });
-      
+
       if (publicClient) {
         toast.info("Waiting for approval confirmation...");
         await publicClient.waitForTransactionReceipt({ hash: approveTx });
@@ -251,5 +254,47 @@ export function useEmelBid() {
     }
   };
 
-  return { createAuction, placeBid, expireAuction, withdrawProceeds, getWinner };
+  const getWinningBidDetails = async (auctionId: string) => {
+    try {
+      if (!publicClient) throw new Error("Public client not available");
+      if (!fhe) throw new Error("FHE instance not initialized");
+
+      // 1. Get the winning request ID
+      const winningReqId = await publicClient.readContract({
+        address: CONTRACTS.EMEL_BID as `0x${string}`,
+        abi: EmelBidAbi.abi,
+        functionName: 'winningRequestId',
+        args: [auctionId as `0x${string}`],
+      }) as bigint;
+
+
+      // 2. Get the decryption request (isWinning handle, bidder, bidAmount handle, auctionId)
+      const [isWinningHandle, bidder, bidAmountHandle, reqAuctionId] = await publicClient.readContract({
+        address: CONTRACTS.EMEL_BID as `0x${string}`,
+        abi: EmelBidAbi.abi,
+        functionName: 'getDecryptionRequest',
+        args: [winningReqId],
+      }) as [any, any, any, any];
+
+      // 3. Public decrypt the handles using fhe.publicDecrypt
+      const results = await fhe.publicDecrypt([isWinningHandle, bidAmountHandle]);
+
+      const decryptedIsWinning = results.values[isWinningHandle];
+      const decryptedBidAmount = results.values[bidAmountHandle];
+
+      return {
+        requestId: winningReqId,
+        bidder,
+        auctionId: reqAuctionId,
+        isWinning: decryptedIsWinning,
+        bidAmount: decryptedBidAmount,
+        decryptionProof: results.decryptionProof,
+      };
+    } catch (error: any) {
+      console.error("Error getting winning bid details:", error);
+      return null;
+    }
+  };
+
+  return { createAuction, placeBid, expireAuction, withdrawProceeds, getWinner, getWinningBidDetails };
 }

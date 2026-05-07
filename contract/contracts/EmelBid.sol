@@ -57,10 +57,10 @@ contract EmelBid is ReentrancyGuard, ZamaEthereumConfig, Ownable {
 
     mapping(bytes32 => AuctionConfig) public auctions;
     mapping(uint256 => DecryptionRequest) public decryptionRequests;
-    mapping(bytes32 => bool) public pendingSettlement;
     mapping(address => uint256) public sellerNonce;
     mapping(bytes32 => address) public auctionWinner;
     mapping(bytes32 => address[]) public auctionBidders;
+    mapping(bytes32 => uint256) public winningRequestId;
 
     mapping(address => mapping(bytes32 => euint64)) public userBid;
 
@@ -185,7 +185,6 @@ contract EmelBid is ReentrancyGuard, ZamaEthereumConfig, Ownable {
         AuctionConfig storage auction = auctions[auctionId];
 
         require(!auction.settled, "Settled");
-        require(!pendingSettlement[auctionId], "Pending");
         require(block.number >= auction.startBlock, "Not started");
         require(block.number <= auction.startBlock + auction.duration, "Ended");
 
@@ -219,8 +218,6 @@ contract EmelBid is ReentrancyGuard, ZamaEthereumConfig, Ownable {
             auctionId: auctionId
         });
 
-        pendingSettlement[auctionId] = true;
-
         emit DecryptionRequested(id, auctionId, msg.sender);
     }
 
@@ -232,17 +229,19 @@ contract EmelBid is ReentrancyGuard, ZamaEthereumConfig, Ownable {
         euint64 bidAmount = req.bidAmount;
         bytes32 auctionId = req.auctionId;
 
-        delete decryptionRequests[_requestId];
         totalDecryptions++;
+        
 
         AuctionConfig storage auction = auctions[auctionId];
-
-        pendingSettlement[auctionId] = false;
 
         emit DecryptionFulfilled(_requestId, _isWinning);
 
         if (_isWinning && !auction.settled) {
+            FHE.makePubliclyDecryptable(req.isWinning);
+            FHE.makePubliclyDecryptable(req.bidAmount);
+
             auction.settled = true;
+            winningRequestId[auctionId] = _requestId;
 
             auction.proceeds = bidAmount;
             FHE.allowThis(auction.proceeds);
@@ -369,10 +368,10 @@ contract EmelBid is ReentrancyGuard, ZamaEthereumConfig, Ownable {
 
     function getDecryptionRequest(uint256 _requestId)
         external view
-        returns (address bidder, bytes32 auctionId)
+        returns (ebool isWinning, address bidder, euint64 bidAmount, bytes32 auctionId)
     {
         DecryptionRequest storage req = decryptionRequests[_requestId];
-        return (req.bidder, req.auctionId);
+        return (req.isWinning, req.bidder, req.bidAmount, req.auctionId);
     }
 
     function isAuctionActive(bytes32 auctionId)

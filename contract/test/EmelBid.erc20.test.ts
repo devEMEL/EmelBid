@@ -119,6 +119,25 @@ describe("EmelBid — ERC20 Auctions", function () {
     const auction = await emelBid.getAuction(auctionId);
     expect(auction.settled).to.equal(true);
     expect(await emelBid.getWinner(auctionId)).to.equal(bidder1Address);
+
+    // ✅ New: Check winningRequestId
+    expect(await emelBid.winningRequestId(auctionId)).to.equal(requestId);
+
+    // ✅ New: Check decryptionRequest still exists and handles are publicly decryptable
+    const [isWinningHandle, bidder, bidAmountHandle, reqAuctionId] = await emelBid.getDecryptionRequest(requestId);
+    
+    expect(bidder).to.equal(bidder1Address);
+    expect(reqAuctionId).to.equal(auctionId);
+
+    // In a real dApp, we would use fhevmjs.publicDecrypt, but in hardhat-fhevm mock we can just decrypt the handles
+    // since makePubliclyDecryptable allows the Gateway (and us in tests) to see the result.
+    const decryptedIsWinning = await fhevm.publicDecryptEbool(isWinningHandle);
+    const decryptedBidAmount = await fhevm.publicDecryptEuint(FhevmType.euint64, bidAmountHandle);
+
+    expect(decryptedIsWinning).to.equal(true);
+    expect(decryptedBidAmount).to.equal(bidUnits);
+
+    console.log(`Verified Winning Request: ID=${requestId}, Bidder=${bidder}, Amount=${decryptedBidAmount}`);
   });
 
   it("should transfer to the winner", async function () {

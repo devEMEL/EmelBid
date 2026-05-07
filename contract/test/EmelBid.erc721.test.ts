@@ -116,6 +116,23 @@ describe("EmelBid — ERC721 Auctions", function () {
     await emelBid.connect(decryptor).fulfillDecryption(requestId, true);
 
     expect(await mockERC721.ownerOf(tokenId)).to.equal(bidder1Address);
+
+    // ✅ New: Check winningRequestId
+    expect(await emelBid.winningRequestId(auctionId)).to.equal(requestId);
+
+    // ✅ New: Check decryptionRequest still exists and handles are publicly decryptable
+    const [isWinningHandle, bidder, bidAmountHandle, reqAuctionId] = await emelBid.getDecryptionRequest(requestId);
+    
+    expect(bidder).to.equal(bidder1Address);
+    expect(reqAuctionId).to.equal(auctionId);
+
+    const decryptedIsWinning = await fhevm.publicDecryptEbool(isWinningHandle);
+    const decryptedBidAmount = await fhevm.publicDecryptEuint(FhevmType.euint64, bidAmountHandle);
+
+    expect(decryptedIsWinning).to.equal(true);
+    expect(decryptedBidAmount).to.equal(bidUnits);
+
+    console.log(`Verified Winning Request: ID=${requestId}, Bidder=${bidder}, Amount=${decryptedBidAmount}`);
   });
 
   it("should refund the loser", async function () {
