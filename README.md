@@ -1,46 +1,44 @@
-# EmelBid: Encrypted Dutch Auction Marketplace
+# EmelBid: Encrypted Dutch Auction Marketplace 🚀🔒
 
-**EmelBid** is a decentralized, privacy-preserving marketplace for Dutch Auctions, powered by **Fully Homomorphic Encryption (FHE)** via [Zama's FHEVM](https://zama.ai/fhevm). It supports creating and participating in secure auctions across multiple asset classes without exposing bid amounts to the public until the auction is settled.
+**EmelBid** is an **encrypted Dutch Auction marketplace** powered by **Fully Homomorphic Encryption (FHE)** via [Zama's FHEVM](https://zama.ai/fhevm). It enables users to create and participate in privacy-preserving auctions for various asset classes (ERC20, ERC721, and Confidential Tokens) where bid amounts remain completely hidden until the auction is settled.
+price decays/decreases by a certain rate per block, and the first bidder to bid above the current price wins.
 
-By leveraging FHE, EmelBid guarantees **zero slippage**, completely stops **front-running (MEV)**, and ensures absolute bid confidentiality. Bidders encrypt their inputs locally using the FHEVM SDK, and the contract computes the Dutch auction decay logic entirely in ciphertext.
+By leveraging FHE, EmelBid guarantees **zero slippage**, eliminates **front-running (MEV)**, and ensures absolute bid confidentiality. Bidders encrypt their inputs locally using the FHEVM SDK, and the contract performs the Dutch auction decay logic and bid comparisons entirely on ciphertext.
 
 ---
 
 ## 🌟 Core Features
 
-- **Confidential Bidding**: Bids are fully encrypted. No one (not even the RPC node, miner, or indexer) can read the true bid amount before settlement.
+- **Confidential Bidding**: Bids are encrypted using FHE. No one—neither the RPC node, miner, nor other bidders—can see the true bid amount before settlement.
 - **Multi-Asset Support**: Create auctions for:
-  - standard **ERC20** tokens
+  - Standard **ERC20** tokens
   - Non-Fungible Tokens (**ERC721**)
   - Confidential **ERC7984** FHE tokens
-- **Dutch Auction Decay in Ciphertext**: Auction prices decay automatically by a predefined encrypted rate per block. The mathematical logic determining if a bid exceeds the current price + reserve happens completely over encrypted data (`euint64`).
-- **Verifiable Decryption Flow**: A trusted solver securely handles decryption requests to enforce the end of an auction. Once a winning bid is resolved, its key data (`bidAmount`, `isWinning`) is made explicitly `publiclyDecryptable` for completely transparent, trustless verification on the frontend.
-- **Seamless UX**: Beautiful UI displaying encrypted token balances, FHE-enabled interactions, dynamic auction status fetching via subgraph, and encrypted wallet signature capabilities.
+- **On-Chain Encrypted Logic**: Auction price decay and winning bid determination are calculated using `TFHE` operations on-chain.
+- **Verifiable Decryption**: A trusted solver handles decryption requests via the Zama Gateway. Winning bid details are made `publiclyDecryptable` upon settlement for transparent verification.
 
 ---
 
 ## 🏛️ System Architecture
 
-EmelBid relies on 4 interconnected components communicating together:
+EmelBid consists of four primary components working in sync:
 
-1. **Smart Contracts (`/contract`)**
-   - Built on Hardhat and deployed to the Sepolia testnet.
-   - Powered by `fhevm/lib/TFHE.sol` for encrypted integer operations.
-   - Core file: `EmelBid.sol` handling the entire marketplace engine.
+```mermaid
+graph TD
+    User((User)) -->|Encrypts & Submits Bid| Frontend[Vite Frontend]
+    Frontend -->|Interacts| Contract[EmelBid Smart Contract]
+    Contract -->|Emits DecryptionRequested| Solver[Node.js Solver]
+    Solver -->|Requests Decryption| Gateway((Zama Gateway))
+    Gateway -->|Provides Decryption| Solver
+    Solver -->|Fulfills Decryption| Contract
+    Contract -->|Emits Events| Subgraph[(The Graph Subgraph)]
+    Subgraph -->|Provides Data| Frontend
+```
 
-2. **Frontend (`/frontend`)**
-   - React + Vite + TailwindCSS application.
-   - Leverages `wagmi` and `viem` for smart contract interactions.
-   - Connects to FHE operations directly in the browser via `@zama-fhe/relayer-sdk/bundle`.
-
-3. **Solver / Oracle Engine (`/solver`)**
-   - A highly reliable Node.js background process/bot.
-   - Tracks `DecryptionRequested` events emitting from the chain when interactions require FHE conditional revealing.
-   - Triggers decentralized network decryption using Zama's FHE Relayer stack, passing the result seamlessly back to the EmelBid contract (`fulfillDecryption`).
-
-4. **Indexer (`/indexer`)**
-   - A TheGraph subgraph indexing platform events (`AuctionCreated`, `BidPlaced`).
-   - Powers the marketplace explorer, user profile history, and historical auction states.
+1. **Smart Contracts (`/contract`)**: The core engine built with Solidty and Zama's `TFHE` library. It manages auction state, encrypted bidding logic, and asset transfers.
+2. **Frontend (`/frontend`)**: A React/Vite application that handles local FHE encryption, wallet interactions (Wagmi/Viem), and displays auction data via the Subgraph.
+3. **Solver (`/solver`)**: A Node.js service that monitors the blockchain for decryption requests and executes the decryption fulfillment flow through the Zama Gateway.
+4. **Indexer (`/indexer`)**: A Subgraph that tracks auction lifecycle events to provide a performant API for the frontend to query auction history and active listings.
 
 ---
 
@@ -48,7 +46,7 @@ EmelBid relies on 4 interconnected components communicating together:
 
 - **FHE Engine:** Zama FHEVM, `@zama-fhe/relayer-sdk`
 - **Smart Contracts:** Solidity, Hardhat, Ethers, Chai (Testing)
-- **Frontend Stack:** React, Vite, TypeScript, TailwindCSS, React Router, Wagmi v2
+- **Frontend Stack:** React, Vite, TypeScript, TailwindCSS, React Router, Wagmi
 - **Backend / Solver:** Node.js, Viem, TypeScript
 - **Data Indexing:** The Graph (Subgraph)
 - **Network:** Ethereum Sepolia Testnet (FHEVM Coprocessor)
