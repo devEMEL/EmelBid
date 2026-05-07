@@ -1,10 +1,14 @@
 # EmelBid: Encrypted Dutch Auction Marketplace 🚀🔒
 
-**EmelBid** is an **encrypted Dutch Auction marketplace** powered by **Fully Homomorphic Encryption (FHE)** via [Zama's FHEVM](https://zama.ai/fhevm). It enables users to create and participate in privacy-preserving auctions for various asset classes (ERC20, ERC721, and Confidential Tokens) where bid amounts remain completely hidden until the auction is settled.
+**EmelBid** is an **encrypted Dutch Auction marketplace** built using Fully Homomorphic Encryption, powered by Zama’s FHEVM. It enables users to create and participate in privacy-preserving auctions for various asset classes (ERC20, ERC721, and Confidential Tokens) where bid amounts remain completely hidden until the auction is settled.
 
-Price starts high and decays/decreases by a certain rate per block, and the first bidder to bid greater than or equal to the current price wins.
+Today, most on-chain auctions expose every bid publicly. That creates major problems like front-running, MEV exploitation, and unfair price manipulation. Anyone can monitor pending transactions and react before your bid is finalized.
 
-By leveraging FHE, EmelBid guarantees **zero slippage**, eliminates **front-running (MEV)**, and ensures absolute bid confidentiality. Bidders encrypt their inputs locally using the FHEVM SDK, and the contract performs the Dutch auction decay logic and bid comparisons entirely on ciphertext.
+EmelBid solves this by keeping bids fully encrypted on-chain.
+
+In our Dutch auction model, the price starts high and decreases over time, and the first bidder whose encrypted bid is greater than or equal to the current price wins. The key difference is that nobody can see the actual bid amount while the auction is running — not validators, not RPC providers, and not other users.
+
+Using Zama’s FHE technology, all bid comparisons and auction logic happen directly on encrypted data without revealing sensitive values.
 
 ---
 
