@@ -1,0 +1,1 @@
+import{de as e,el as i,ek as n,em as t,en as x}from"./index-LEybwlkM.js";const o=({onClick:s,text:l})=>e.jsxs(i,{onClick:s,children:[e.jsx(n,{children:e.jsx(t,{})}),e.jsx(x,{children:l})]});export{o as l};

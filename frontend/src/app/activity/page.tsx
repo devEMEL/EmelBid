@@ -7,7 +7,7 @@ export default function ActivityPage() {
   const [activities, setActivities] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [filterOpen, setFilterOpen] = useState(false);
-  const [timeRange, setTimeRange] = useState('All time');
+  // const [timeRange, setTimeRange] = useState('All time');
   const [filterType, setFilterType] = useState('All types');
 
   useEffect(() => {

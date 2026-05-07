@@ -1,5 +1,5 @@
-import { useState, useMemo } from 'react';
-import { Info, Image as ImageIcon, Coins, ShieldCheck, ChevronRight, Check, Search, Loader2 } from 'lucide-react';
+import { useState } from 'react';
+import { Image as ImageIcon, Coins, ShieldCheck, ChevronRight, Check, Loader2 } from 'lucide-react';
 import { useNFTs } from '@/hooks/useNFTs';
 import { useEmelBid } from '@/hooks/useEmelBid';
 import { toast } from 'react-toastify';

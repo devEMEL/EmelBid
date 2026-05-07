@@ -69,7 +69,7 @@ export default function FaucetPage() {
       icon: ImageIcon,
       color: 'text-purple-400',
       action: 'Safe Mint NFT',
-      fn: async (client: any, userAddress: any) => {
+      fn: async (client: any) => {
         const tokenURI = "ipfs://bafkreicii2htwqeqec6hyegzypw5mbweimcq7cszpiwsdstxuzkcd23ktm";
         console.log("Resulting TokenURI:", tokenURI);
 

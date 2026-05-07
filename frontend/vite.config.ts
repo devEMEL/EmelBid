@@ -9,9 +9,10 @@ export default defineConfig({
     alias: {
       '@': path.resolve(__dirname, './src'),
     },
+    conditions: ['browser', 'import', 'module', 'default'],
   },
   optimizeDeps: {
-    exclude: ['viem'],
+    include: ['viem'],
   },
   server: {
     port: 3000,

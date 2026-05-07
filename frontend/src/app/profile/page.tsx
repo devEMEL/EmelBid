@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ExternalLink, Loader2, ShieldCheck, Copy, Lock, Unlock } from 'lucide-react';
+import { Loader2, ShieldCheck, Copy, Lock, Unlock } from 'lucide-react';
 import { useAccount, useReadContract, useSignTypedData } from 'wagmi';
 import { parseAbi, formatUnits } from 'viem';
 import { CONTRACTS } from '@/lib/constants';

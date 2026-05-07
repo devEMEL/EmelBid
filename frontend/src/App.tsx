@@ -7,9 +7,6 @@ import AuctionsPage from "@/app/auctions/page";
 import AuctionDetailsPage from "@/app/auctions/id/page";
 import ProfilePage from "@/app/profile/page";
 import ActivityPage from "@/app/activity/page";
-import AddTokenPage from "@/app/add-token/page";
-import CreatePositionsPage from "@/app/positions/create/page";
-import PositionDetailsPage from "@/app/positions/id/page";
 import FaucetPage from "@/app/faucet/page";
 
 function RootLayout({ children }: { children: React.ReactNode }) {
@@ -37,14 +34,9 @@ export default function App() {
           <Route path="/faucet" element={<FaucetPage />} />
           <Route path="/auctions" element={<AuctionsPage />} />
           <Route path="/auctions/:id" element={<AuctionDetailsPage />} />
-
-
-          {/* <Route path="/pools/create" element={<CreatePoolPage />} /> */}
-          {/* <Route path="/pools/:id" element={<PoolDetailsPage />} /> */}
   
           <Route path="/profile" element={<ProfilePage />} />
           <Route path="/activity" element={<ActivityPage />} />
-          <Route path="/add-token" element={<AddTokenPage />} />
 
           
           

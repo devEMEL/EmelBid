@@ -3,7 +3,7 @@ import { useReadContract } from 'wagmi';
 import { CONTRACTS } from '@/lib/constants';
 import EmelBidAbi from '@/lib/abis/EmelBid.json';
 import { Link, useNavigate } from 'react-router-dom';
-import { Search, Plus, Loader2, ExternalLink, Timer, ShieldAlert, ImageIcon, Coins } from 'lucide-react';
+import { Search, Plus, Loader2, ExternalLink, Timer } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { formatUnits } from 'viem';
 import { fetchAuctions } from '@/lib/subgraph';

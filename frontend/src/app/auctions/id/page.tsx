@@ -1,10 +1,9 @@
 import { useState, useEffect } from 'react';
-import { useParams, Link, useNavigate } from 'react-router-dom';
+import { useParams, Link } from 'react-router-dom';
 import { usePublicClient, useAccount } from 'wagmi';
 import { 
-  ArrowLeft, ExternalLink, Timer, ImageIcon, 
-  Coins, User, Hash, Clock, CheckCircle2, AlertCircle,
-  Gem, Wallet, Zap, ShieldCheck, Flame, Download, Eye, Trophy
+  ArrowLeft, ExternalLink, Timer, User, Hash, Clock, CheckCircle2, AlertCircle,
+  Gem, Zap, ShieldCheck, Flame, Download, Eye, Trophy
 } from 'lucide-react';
 import { formatUnits } from 'viem';
 import { fetchAuctionById } from '@/lib/subgraph';
@@ -13,7 +12,7 @@ import ListingImage from '@/components/ListingImage';
 
 export default function AuctionDetailsPage() {
   const { id } = useParams<{ id: string }>();
-  const navigate = useNavigate();
+  // const navigate = useNavigate();
   const { address } = useAccount();
   const publicClient = usePublicClient();
   const { placeBid, expireAuction, withdrawProceeds, getWinner, getWinningBidDetails } = useEmelBid();
@@ -124,7 +123,7 @@ export default function AuctionDetailsPage() {
   }
 
   const isExpired = !auction.settled && currentBlock > BigInt(auction.startBlock) + BigInt(auction.duration);
-  const canWithdraw = auction.settled && winner !== "0x0000000000000000000000000000000000000000" && winner !== "pending" && auction.seller.toLowerCase() === address?.toLowerCase();
+  // const canWithdraw = auction.settled && winner !== "0x0000000000000000000000000000000000000000" && winner !== "pending" && auction.seller.toLowerCase() === address?.toLowerCase();
 
   return (
     <div className="pt-8 pb-40 px-6 max-w-6xl mx-auto relative">
