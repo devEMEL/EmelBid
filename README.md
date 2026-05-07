@@ -7,6 +7,10 @@ By leveraging FHE, EmelBid guarantees **zero slippage**, eliminates **front-runn
 
 ---
 
+##### Demo Link: https://emel-bid-99d5.vercel.app/
+
+##### Demo Video: 
+
 ## 🌟 Core Features
 
 - **Confidential Bidding**: Bids are encrypted using FHE. No one—neither the RPC node, miner, nor other bidders—can see the true bid amount before settlement.
