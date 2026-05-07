@@ -10,7 +10,7 @@ import { privateKeyToAccount } from 'viem/accounts';
 import { sepolia } from 'viem/chains';
 import { createInstance, SepoliaConfig } from '@zama-fhe/relayer-sdk/node';
 
-const RPC_URL = "https://sepolia.gateway.tenderly.co";
+const RPC_URL = "https://sepolia.infura.io/v3/f1f43d570185470aa39b07173b73d419";
 const PRIVATE_KEY = process.env.PRIVATE_KEY;
 const CONTRACT_ADDRESS = '0xb452Ae94A20d618Ea8c86B1580B93D96CF0d1D10';
 
