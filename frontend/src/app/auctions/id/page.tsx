@@ -88,6 +88,7 @@ export default function AuctionDetailsPage() {
     setRevealingBid(true);
     try {
       const details = await getWinningBidDetails(id);
+      console.log(details);
       if (details) {
         setWinningBid(details.bidAmount);
         setWinner(details.bidder);
@@ -293,19 +294,19 @@ export default function AuctionDetailsPage() {
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div className="bg-black/20 p-4 border border-white/5">
                     <p className="text-[9px] font-black text-white/30 uppercase tracking-widest mb-2">Winner</p>
-                    <p className="text-xs font-mono text-emerald-400 break-all">{winningBid.bidder}</p>
+                    <p className="text-xs font-mono text-emerald-400 break-all">{winner}</p>
                   </div>
                   <div className="bg-black/20 p-4 border border-white/5">
                     <p className="text-[9px] font-black text-white/30 uppercase tracking-widest mb-2">Winning Bid</p>
                     <p className="text-xl font-black text-white tracking-tighter">
-                      {formatUnits(BigInt(winningBid.bidAmount?.toString() || '0'), 6)}
+                      {formatUnits(BigInt(winningBid?.toString() || '0'), 6)}
                       <span className="text-xs text-primary ml-2">CWETH</span>
                     </p>
                   </div>
                   <div className="bg-black/20 p-4 border border-white/5">
                     <p className="text-[9px] font-black text-white/30 uppercase tracking-widest mb-2">Is Winning</p>
-                    <p className={`text-sm font-black uppercase ${winningBid.isWinning ? 'text-emerald-400' : 'text-red-400'}`}>
-                      {winningBid.isWinning ? '✓ Verified Winner' : '✗ Not Winning'}
+                    <p className={`text-sm font-black uppercase ${winner == address ? 'text-emerald-400' : 'text-red-400'}`}>
+                      {winner == address ? '✓ Verified Winner' : '✗ Not Winning'}
                     </p>
                   </div>
                 </div>

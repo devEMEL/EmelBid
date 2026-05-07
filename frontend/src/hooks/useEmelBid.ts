@@ -266,6 +266,7 @@ export function useEmelBid() {
         functionName: 'winningRequestId',
         args: [auctionId as `0x${string}`],
       }) as bigint;
+      console.log({ winningReqId });
 
 
       // 2. Get the decryption request (isWinning handle, bidder, bidAmount handle, auctionId)
@@ -275,12 +276,15 @@ export function useEmelBid() {
         functionName: 'getDecryptionRequest',
         args: [winningReqId],
       }) as [any, any, any, any];
+      console.log({isWinningHandle, bidder, bidAmountHandle, reqAuctionId});
 
       // 3. Public decrypt the handles using fhe.publicDecrypt
       const results = await fhe.publicDecrypt([isWinningHandle, bidAmountHandle]);
+      console.log({results});
 
-      const decryptedIsWinning = results.values[isWinningHandle];
-      const decryptedBidAmount = results.values[bidAmountHandle];
+      const decryptedIsWinning = results.clearValues[isWinningHandle];
+      const decryptedBidAmount = results.clearValues[bidAmountHandle];
+      console.log({decryptedIsWinning, decryptedBidAmount})
 
       return {
         requestId: winningReqId,

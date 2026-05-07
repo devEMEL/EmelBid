@@ -12,7 +12,7 @@ import { createInstance, SepoliaConfig } from '@zama-fhe/relayer-sdk/node';
 
 const RPC_URL = "https://sepolia.gateway.tenderly.co";
 const PRIVATE_KEY = process.env.PRIVATE_KEY;
-const CONTRACT_ADDRESS = '0xCf8B3FEAb3d90fbA7DFfc92CDdE3984eE91A8516';
+const CONTRACT_ADDRESS = '0xb452Ae94A20d618Ea8c86B1580B93D96CF0d1D10';
 
 const ABI = parseAbi([
   'event DecryptionRequested(uint256 indexed requestId, bytes32 indexed auctionId, address bidder)',
