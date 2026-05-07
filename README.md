@@ -1,7 +1,7 @@
 # EmelBid: Encrypted Dutch Auction Marketplace 🚀🔒
 
 **EmelBid** is an **encrypted Dutch Auction marketplace** powered by **Fully Homomorphic Encryption (FHE)** via [Zama's FHEVM](https://zama.ai/fhevm). It enables users to create and participate in privacy-preserving auctions for various asset classes (ERC20, ERC721, and Confidential Tokens) where bid amounts remain completely hidden until the auction is settled.
-price decays/decreases by a certain rate per block, and the first bidder to bid above the current price wins.
+Price decays/decreases by a certain rate per block, and the first bidder to bid above the current price wins.
 
 By leveraging FHE, EmelBid guarantees **zero slippage**, eliminates **front-running (MEV)**, and ensures absolute bid confidentiality. Bidders encrypt their inputs locally using the FHEVM SDK, and the contract performs the Dutch auction decay logic and bid comparisons entirely on ciphertext.
 
