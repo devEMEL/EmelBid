@@ -14,7 +14,7 @@ By leveraging FHE, EmelBid guarantees **zero slippage**, eliminates **front-runn
   - Standard **ERC20** tokens
   - Non-Fungible Tokens (**ERC721**)
   - Confidential **ERC7984** FHE tokens
-- **On-Chain Encrypted Logic**: Auction price decay and winning bid determination are calculated using `TFHE` operations on-chain.
+- **On-Chain Encrypted Logic**: Auction price decay and winning bid determination are calculated using `FHE` operations on-chain.
 - **Verifiable Decryption**: A trusted solver handles decryption requests via the Zama relayer. Winning bid details are made `publiclyDecryptable` upon settlement for transparent verification.
 
 ---
@@ -35,7 +35,7 @@ graph TD
     Subgraph -->|Provides Data| Frontend
 ```
 
-1. **Smart Contracts (`/contract`)**: The core engine built with Solidty and Zama's `TFHE` library. It manages auction state, encrypted bidding logic, and asset transfers.
+1. **Smart Contracts (`/contract`)**: The core engine built with Solidty and Zama's `FHE` library. It manages auction state, encrypted bidding logic, and asset transfers.
 2. **Frontend (`/frontend`)**: A React/Vite application that handles local FHE encryption, wallet interactions (Wagmi/Viem), and displays auction data via the Subgraph.
 3. **Solver (`/solver`)**: A Node.js service that monitors the blockchain for decryption requests and executes the decryption fulfillment flow through the Zama relayer.
 4. **Indexer (`/indexer`)**: A Subgraph that tracks auction lifecycle events to provide a performant API for the frontend to query auction history and active listings.
