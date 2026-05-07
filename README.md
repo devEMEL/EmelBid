@@ -28,8 +28,8 @@ graph TD
     User((User)) -->|Encrypts & Submits Bid| Frontend[Vite Frontend]
     Frontend -->|Interacts| Contract[EmelBid Smart Contract]
     Contract -->|Emits DecryptionRequested| Solver[Node.js Solver]
-    Solver -->|Requests Decryption| Gateway((Zama Gateway))
-    Gateway -->|Provides Decryption| Solver
+    Solver -->|Requests Decryption| Relayer((Zama Relayer))
+    Relayer -->|Provides Decryption| Solver
     Solver -->|Fulfills Decryption| Contract
     Contract -->|Emits Events| Subgraph[(The Graph Subgraph)]
     Subgraph -->|Provides Data| Frontend
