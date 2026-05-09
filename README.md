@@ -12,11 +12,6 @@ Using Zama’s FHE technology, all bid comparisons and auction logic happen dire
 
 ---
 
-##### Demo Link: https://emel-bid-99d5.vercel.app/
-
-##### Demo Video: https://m.youtube.com/watch?v=-GfO8Bi-Xe4
-
-[![Watch the video](https://img.youtube.com/vi/-GfO8Bi-Xe4/maxresdefault.jpg)](https://www.youtube.com/watch?v=-GfO8Bi-Xe4)
 
 ## 🌟 Core Features
 
